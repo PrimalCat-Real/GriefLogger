@@ -12,9 +12,18 @@ import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
 import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Entity;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
+import java.util.UUID;
+
 public class GriefLogger {
+
+
+    public static final UUID SYSTEM_UUID = new UUID(0L, 0L);
+    public static final String SYSTEM_USERNAME = "[System]";
     public static final String MOD_ID = "grieflogger";
     public static final Logger LOGGER = LogUtils.getLogger();
     private static Database DATABASE;
@@ -53,10 +62,13 @@ public class GriefLogger {
         try {
             DATABASE = new Database();
             boolean connected = DATABASE.createConnection();
+
             if (!connected) {
                 LOGGER.error("Failed to connect to database, disabling GriefLogger...");
                 return false;
             }
+
+            Services.USER.insertOrUpdateName(SYSTEM_UUID, SYSTEM_USERNAME);
         } catch (Exception e) {
             LOGGER.error("Failed to connect to database, disabling GriefLogger...", e);
             return false;
@@ -142,6 +154,13 @@ public class GriefLogger {
             component = Component.literal(component.getString()).withStyle(component.getStyle());
         }
         return component;
+    }
+
+    public static UUID getEntityUUID(@Nullable Entity entity) {
+        if (entity instanceof ServerPlayer serverPlayer) {
+            return serverPlayer.getUUID();
+        }
+        return SYSTEM_UUID;
     }
 
     public static Style getTheme() {

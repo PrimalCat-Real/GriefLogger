@@ -15,18 +15,22 @@ import net.minecraft.world.item.Items;
 import java.util.UUID;
 
 public class BlockHistory extends History {
-
+    private int stateId;
 
     private final String material;
 
-    public BlockHistory(long time, String name, String uuid, int x, int y, int z, String material, int blockAction) {
+    public BlockHistory(long time, String name, String uuid, int x, int y, int z, String material, int blockAction, int stateId) {
+
         this(new Time(time), new User(name, UUID.fromString(uuid)), new BlockPosition(x, y, z), material, BlockAction.fromId(blockAction));
+        this.stateId = stateId;
     }
 
     public BlockHistory(Time time, User user, BlockPosition position, String material, BlockAction action) {
         super(time, user, position, action);
         this.material = material;
     }
+
+    public int getStateId() { return stateId; }
 
     @Override
     public Component getComponent() {

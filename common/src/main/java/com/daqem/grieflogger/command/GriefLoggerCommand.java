@@ -10,6 +10,7 @@ public class GriefLoggerCommand {
     private static final ICommand INSPECT = new InspectCommand();
     private static final ICommand LOOKUP = new LookupCommand();
     private static final ICommand PAGE = new PageCommand();
+    private static final ICommand ROLLBACK = new RollbackCommand();
 
     public static void registerCommand(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(commandWithPrefix("grieflogger"));
@@ -20,6 +21,7 @@ public class GriefLoggerCommand {
         return Commands.literal(prefix)
                 .then(INSPECT.getCommand())
                 .then(LOOKUP.getCommand())
+                .then(ROLLBACK.getCommand())
                 .then(PAGE.getCommand());
     }
 }

@@ -7,10 +7,12 @@
   ],
   "mixins": [
     "ItemMixin",
+    "LevelMixin",
     "MixinBucketItem",
     "MixinItemStack",
     "MixinServerPlayer",
-    "ProjectileMixin"
+    "ProjectileMixin",
+    "ServerLevelMixin"
   ],
   "injectors": {
     "defaultRequire": 1

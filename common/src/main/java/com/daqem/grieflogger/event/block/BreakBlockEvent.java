@@ -1,5 +1,7 @@
 package com.daqem.grieflogger.event.block;
 
+import com.daqem.grieflogger.block.coalesce.BlockEventCoalescer;
+import com.daqem.grieflogger.block.coalesce.BlockEventLock;
 import com.daqem.grieflogger.block.BlockHandler;
 import com.daqem.grieflogger.block.container.ContainerHandler;
 import com.daqem.grieflogger.event.AbstractEvent;
@@ -38,8 +40,20 @@ public class BreakBlockEvent extends AbstractEvent {
                         BreakContainerEvent.breakContainer(serverPlayer, level, pos, container));
             }
 
-            LogBlockEvent.logBlock(serverPlayer, level, state, pos, BlockAction.BREAK_BLOCK);
+            if (level instanceof net.minecraft.server.level.ServerLevel serverLevel) {
+                BlockEventCoalescer.record(
+                        serverLevel,
+                        pos,
+                        state,
+                        net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(),
+                        com.daqem.grieflogger.block.coalesce.BlockEventKind.PLAYER_BREAK,
+                        serverPlayer.grieflogger$asServerPlayer().getUUID()
+                );
+            }
+
         }
+
+
         return pass();
     }
 }

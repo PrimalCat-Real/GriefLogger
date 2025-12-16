@@ -9,6 +9,7 @@ import com.daqem.grieflogger.thread.OnComplete;
 import com.daqem.grieflogger.thread.ThreadManager;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.state.BlockState;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -108,5 +109,9 @@ public class BlockService {
                 level.dimension().location().toString(),
                 filterList
         );
+    }
+
+    public BlockState getBlockStateFromId(int stateId) {
+        return blockRepository.getBlockStateById(stateId);
     }
 }

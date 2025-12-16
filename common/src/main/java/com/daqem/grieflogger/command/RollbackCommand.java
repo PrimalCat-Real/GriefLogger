@@ -52,9 +52,10 @@ public class RollbackCommand implements ICommand {
         }
 
         ThreadManager.submit(() -> {
-            List<IHistory> history = Services.BLOCK.getFilteredBlockHistory(source.getLevel(), filterList);
 
-            if (history.isEmpty()) {
+            return Services.BLOCK.getFilteredBlockHistory(source.getLevel(), filterList);
+        }, history -> {
+            if (history == null || history.isEmpty()) {
                 source.sendFailure(Component.literal("§cNo actions found to rollback."));
                 return;
             }
@@ -78,7 +79,11 @@ public class RollbackCommand implements ICommand {
     }
 
     private void processRollback(ServerLevel level, BlockHistory history, AtomicInteger count) {
-        BlockPos pos = history.getPosition() ;
+        BlockPos pos = new BlockPos(
+                history.getPosition().x(),
+                history.getPosition().y(),
+                history.getPosition().z()
+        );
         int action = history.getAction().getId();
 
         if (action == BlockAction.BREAK_BLOCK.getId()) {

@@ -68,7 +68,7 @@ public class GriefLogger {
                 return false;
             }
 
-            Services.USER.insertOrUpdateName(SYSTEM_UUID, SYSTEM_USERNAME);
+
         } catch (Exception e) {
             LOGGER.error("Failed to connect to database, disabling GriefLogger...", e);
             return false;
@@ -76,6 +76,7 @@ public class GriefLogger {
 
         Services.MATERIAL.createTable();
         Services.USER.createTable();
+
         Services.USERNAME.createTable();
         Services.LEVEL.createTable();
         Services.ENTITY.createTable();
@@ -93,6 +94,11 @@ public class GriefLogger {
             Services.CONTAINER.createIndexes();
             Services.ITEM.createIndexes();
             Services.SESSION.createIndexes();
+        }
+        try {
+            Services.USER.insertOrUpdateName(SYSTEM_UUID, SYSTEM_USERNAME);
+        } catch (Exception e) {
+            LOGGER.error("Failed to insert system user", e);
         }
 
         long end = System.currentTimeMillis();

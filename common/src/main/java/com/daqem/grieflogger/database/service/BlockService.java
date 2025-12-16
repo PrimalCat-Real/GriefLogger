@@ -41,6 +41,17 @@ public class BlockService {
         blockRepository.insertEntity(System.currentTimeMillis(), userUuid.toString(), levelName, pos.getX(), pos.getY(), pos.getZ(), entity, blockAction.getId());
     }
 
+    public void insertBlockState(UUID userUuid, String levelName, BlockPos pos, BlockState state, BlockAction blockAction) {
+        blockRepository.insertBlockState(
+                System.currentTimeMillis(),
+                userUuid.toString(),
+                levelName,
+                pos.getX(), pos.getY(), pos.getZ(),
+                state,
+                blockAction.getId()
+        );
+    }
+
     public List<IHistory> getBlockHistory(Level level, BlockPos pos) {
         return blockRepository.getBlockHistory(
                 level.dimension().location().toString(),

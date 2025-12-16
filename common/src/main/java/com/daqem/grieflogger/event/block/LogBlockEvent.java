@@ -14,11 +14,11 @@ public class LogBlockEvent extends AbstractEvent {
     public static void logBlock(GriefLoggerServerPlayer player, Level level, BlockState state, BlockPos pos, BlockAction blockAction) {
         ResourceLocation materialLocation = state.getBlock().arch$registryName();
         if (materialLocation != null) {
-            Services.BLOCK.insertMaterial(
+            Services.BLOCK.insertBlockState(
                     player.grieflogger$asServerPlayer().getUUID(),
                     level.dimension().location().toString(),
                     pos,
-                    materialLocation.toString(),
+                    state,
                     blockAction);
         }
     }

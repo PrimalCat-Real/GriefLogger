@@ -42,7 +42,7 @@ public class BlockRepository extends Repository {
                     x integer NOT NULL,
                     y integer NOT NULL,
                     z integer NOT NULL,
-                    state_id integer DEFAULT NULL, 
+                    state_id integer DEFAULT NULL,
                     type integer NOT NULL,
                     action integer NOT NULL,
                     FOREIGN KEY(state_id) REFERENCES block_states(id),
@@ -216,7 +216,7 @@ public class BlockRepository extends Repository {
     public List<IHistory> getBlockHistory(String levelName, int x, int y, int z) {
         List<IHistory> blockHistory = new ArrayList<>();
         String query = """
-                SELECT blocks.time, users.name, users.uuid, blocks.x, blocks.y, blocks.z, materials.name, blocks.action
+                SELECT blocks.time, users.name, users.uuid, blocks.x, blocks.y, blocks.z, materials.name, blocks.action, blocks.state_id
                 FROM blocks
                 INNER JOIN users ON blocks.user = users.id
                 INNER JOIN levels ON blocks.level = (
@@ -252,10 +252,11 @@ public class BlockRepository extends Repository {
         return blockHistory;
     }
 
+
     public List<IHistory> getInteractionHistory(String levelName, int x, int y, int z) {
         List<IHistory> blockHistory = new ArrayList<>();
         String query = """
-                SELECT blocks.time, users.name, users.uuid, blocks.x, blocks.y, blocks.z, materials.name, blocks.action
+                SELECT blocks.time, users.name, users.uuid, blocks.x, blocks.y, blocks.z, materials.name, blocks.action, blocks.state_id
                 FROM blocks
                 INNER JOIN users ON blocks.user = users.id
                 INNER JOIN levels ON blocks.level = (
@@ -329,7 +330,8 @@ public class BlockRepository extends Repository {
                         WHEN blocks.action = 3 THEN entities.name
                         ELSE materials.name
                     END AS type_name,
-                    blocks.action
+                    blocks.action,
+                    blocks.state_id  -- ВАЖНО: Добавил запятую выше и эту колонку
                 FROM
                     blocks
                 INNER JOIN users ON blocks.user = users.id
@@ -352,6 +354,7 @@ public class BlockRepository extends Repository {
                 """.formatted(actions, users, includeMaterials, excludeMaterials);
 
         try (PreparedStatement preparedStatement = database.prepareStatement(query)) {
+            // ... (установка параметров без изменений) ...
             preparedStatement.setString(1, levelName);
             preparedStatement.setLong(2, filterList.getTime());
 
@@ -398,7 +401,8 @@ public class BlockRepository extends Repository {
                         resultSet.getInt(6),
                         resultSet.getString(7),
                         resultSet.getInt(8),
-                        resultSet.getInt(9)));
+                        resultSet.getInt(9)
+                ));
             }
             return blockHistory;
         } catch (SQLException exception) {

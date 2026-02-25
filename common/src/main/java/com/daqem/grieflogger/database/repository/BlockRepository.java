@@ -3,6 +3,10 @@ package com.daqem.grieflogger.database.repository;
 import com.daqem.grieflogger.GriefLogger;
 import com.daqem.grieflogger.command.filter.FilterList;
 import com.daqem.grieflogger.database.Database;
+import com.daqem.grieflogger.database.orm.Dialect;
+import com.daqem.grieflogger.database.orm.query.Query;
+import com.daqem.grieflogger.database.orm.query.SelectBuilder;
+import com.daqem.grieflogger.database.orm.schema.SchemaBuilder;
 import com.daqem.grieflogger.model.history.BlockHistory;
 import com.daqem.grieflogger.model.history.IHistory;
 import com.daqem.grieflogger.util.BlockStateUtils;
@@ -26,289 +30,211 @@ public class BlockRepository extends Repository {
     }
 
     public void createTable() {
-        String stateSql = "CREATE TABLE IF NOT EXISTS block_states (" +
-                "id " + (isMysql() ? "int NOT NULL AUTO_INCREMENT" : "integer NOT NULL") + ", " +
-                "state_string " + (isMysql() ? "varchar(255)" : "text") + " NOT NULL UNIQUE, " +
-                (isMysql() ? "PRIMARY KEY (id)" : "PRIMARY KEY (id AUTOINCREMENT)") +
-                ")";
+        // block_states table
+        SchemaBuilder.create("block_states")
+                .id("id")
+                .string("state_string", 255, false, true)
+                .build(database);
 
-        database.createTable(stateSql);
-
-        String sql = """
-                CREATE TABLE IF NOT EXISTS blocks (
-                    time integer NOT NULL,
-                    user integer NOT NULL,
-                    level integer NOT NULL,
-                    x integer NOT NULL,
-                    y integer NOT NULL,
-                    z integer NOT NULL,
-                    state_id integer DEFAULT NULL,
-                    type integer NOT NULL,
-                    action integer NOT NULL,
-                    FOREIGN KEY(state_id) REFERENCES block_states(id),
-                    FOREIGN KEY(user) REFERENCES users(id),
-                    FOREIGN KEY(level) REFERENCES levels(id),
-                    FOREIGN KEY(type) REFERENCES materials(id)
-                );
-                """;
-        if (isMysql()) {
-            sql = """
-                    CREATE TABLE IF NOT EXISTS blocks (
-                        time bigint NOT NULL,
-                        user int NOT NULL,
-                        level int NOT NULL,
-                        x int NOT NULL,
-                        y int NOT NULL,
-                        z int NOT NULL,
-                        state_id int DEFAULT NULL,
-                        type int NOT NULL,
-                        action int NOT NULL,
-                        FOREIGN KEY(state_id) REFERENCES block_states(id),
-                        FOREIGN KEY(user) REFERENCES users(id),
-                        FOREIGN KEY(level) REFERENCES levels(id),
-                        FOREIGN KEY(type) REFERENCES materials(id)
-                    )
-                    ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4;
-                    """;
-        }
-
-        database.createTable(sql);
-
-        if (isMysql()) {
-            database.execute("ALTER TABLE blocks ADD INDEX state_idx (state_id)", false);
-        } else {
-            database.execute("CREATE INDEX IF NOT EXISTS state_idx ON blocks (state_id)", false);
-        }
+        // blocks table
+        SchemaBuilder.create("blocks")
+                .bigint("time")
+                .integer("user")
+                .integer("level")
+                .integer("x")
+                .integer("y")
+                .integer("z")
+                .integer("state_id", true)
+                .integer("type")
+                .integer("action")
+                .foreignKey("state_id", "block_states", "id")
+                .foreignKey("user", "users", "id")
+                .foreignKey("level", "levels", "id")
+                .foreignKey("type", "materials", "id")
+                .index("state_idx", "state_id")
+                .build(database);
     }
 
     public void createIndexes() {
-        String sql = """
-                CREATE INDEX IF NOT EXISTS coordinates ON blocks (x, y, z);
-                """;
-        if (isMysql()) {
-            sql = """
-                    ALTER TABLE blocks ADD INDEX coordinates (x, y, z);
-                    """;
+        // Indexes are now created in createTable via SchemaBuilder
+        // Only add coordinates index here
+        Dialect dialect = Dialect.current();
+        if (dialect == Dialect.MYSQL) {
+            database.execute("ALTER TABLE blocks ADD INDEX coordinates (x, y, z)", false);
+        } else {
+            database.execute("CREATE INDEX IF NOT EXISTS coordinates ON blocks (x, y, z)", false);
         }
-        database.execute(sql, false);
     }
 
     public void insertBlockState(long time, String userUuid, String levelName, int x, int y, int z, BlockState state, int blockAction) {
         String stateString = BlockStateUtils.serialize(state);
         String materialName = BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString();
+        Dialect dialect = Dialect.current();
 
-        String stateQuery = isMysql()
-                ? "INSERT IGNORE INTO block_states(state_string) VALUES(?)"
-                : "INSERT OR IGNORE INTO block_states(state_string) VALUES(?)";
+        // Insert state
+        Query.insert("block_states")
+                .value("state_string", stateString)
+                .ignore()
+                .queue(database);
 
-        String materialQuery = isMysql()
-                ? "INSERT IGNORE INTO materials(name) VALUES(?)"
-                : "INSERT OR IGNORE INTO materials(name) VALUES(?)";
+        // Insert material
+        Query.insert("materials")
+                .value("name", materialName)
+                .ignore()
+                .queue(database);
 
-        String blockQuery = "INSERT INTO blocks(" +
-                "time, user, level, x, y, z, state_id, type, action) VALUES(" +
-                "?, " +
-                "(SELECT id FROM users WHERE uuid = ?), " +
-                "(SELECT id FROM levels WHERE name = ?), " +
-                "?, ?, ?, " +
-                "(SELECT id FROM block_states WHERE state_string = ?), " +
-                "(SELECT id FROM materials WHERE name = ?), " +
-                "?" +
-                ")";
+        // Insert block with subqueries
+        String blockQuery = """
+                INSERT INTO blocks(time, user, level, x, y, z, state_id, type, action) VALUES(
+                ?, (SELECT id FROM users WHERE uuid = ?), (SELECT id FROM levels WHERE name = ?),
+                ?, ?, ?, (SELECT id FROM block_states WHERE state_string = ?),
+                (SELECT id FROM materials WHERE name = ?), ?)""";
 
         try {
-            PreparedStatement stateStatement = database.prepareStatement(stateQuery);
-            stateStatement.setString(1, stateString);
-            database.queue.add(stateStatement);
-
-            PreparedStatement materialStatement = database.prepareStatement(materialQuery);
-            materialStatement.setString(1, materialName);
-            database.queue.add(materialStatement);
-
-            PreparedStatement blockStatement = database.prepareStatement(blockQuery);
-            blockStatement.setLong(1, time);
-            blockStatement.setString(2, userUuid);
-            blockStatement.setString(3, levelName);
-            blockStatement.setInt(4, x);
-            blockStatement.setInt(5, y);
-            blockStatement.setInt(6, z);
-            blockStatement.setString(7, stateString);
-            blockStatement.setString(8, materialName);
-            blockStatement.setInt(9, blockAction);
-
-            database.queue.add(blockStatement);
-
-        } catch (SQLException exception) {
-            GriefLogger.LOGGER.error("Failed to insert block state", exception);
+            PreparedStatement stmt = database.prepareStatement(blockQuery);
+            stmt.setLong(1, time);
+            stmt.setString(2, userUuid);
+            stmt.setString(3, levelName);
+            stmt.setInt(4, x);
+            stmt.setInt(5, y);
+            stmt.setInt(6, z);
+            stmt.setString(7, stateString);
+            stmt.setString(8, materialName);
+            stmt.setInt(9, blockAction);
+            database.queue.add(stmt);
+        } catch (SQLException e) {
+            GriefLogger.LOGGER.error("Failed to insert block state", e);
         }
     }
 
     public void insertMaterial(long time, String userUuid, String levelName, int x, int y, int z, String material, int blockAction) {
-        String materialQuery = isMysql()
-                ? "INSERT IGNORE INTO materials(name) VALUES(?)"
-                : "INSERT OR IGNORE INTO materials(name) VALUES(?)";
+        // Insert material
+        Query.insert("materials")
+                .value("name", material)
+                .ignore()
+                .queue(database);
 
-        String blockQuery = "INSERT INTO blocks(time, user, level, x, y, z, state_id, type, action) VALUES(" +
-                "?, " +
-                "(SELECT id FROM users WHERE uuid = ?), " +
-                "(SELECT id FROM levels WHERE name = ?), " +
-                "?, ?, ?, " +
-                "NULL, " +
-                "(SELECT id FROM materials WHERE name = ?), " +
-                "?" +
-                ")";
+        // Insert block with subqueries
+        String blockQuery = """
+                INSERT INTO blocks(time, user, level, x, y, z, state_id, type, action) VALUES(
+                ?, (SELECT id FROM users WHERE uuid = ?), (SELECT id FROM levels WHERE name = ?),
+                ?, ?, ?, NULL, (SELECT id FROM materials WHERE name = ?), ?)""";
 
         try {
-            PreparedStatement materialStatement = database.prepareStatement(materialQuery);
-            materialStatement.setString(1, material);
-            database.queue.add(materialStatement);
-
-            PreparedStatement blockStatement = database.prepareStatement(blockQuery);
-            blockStatement.setLong(1, time);
-            blockStatement.setString(2, userUuid);
-            blockStatement.setString(3, levelName);
-            blockStatement.setInt(4, x);
-            blockStatement.setInt(5, y);
-            blockStatement.setInt(6, z);
-            blockStatement.setString(7, material);
-            blockStatement.setInt(8, blockAction);
-            database.queue.add(blockStatement);
-        } catch (SQLException exception) {
-            GriefLogger.LOGGER.error("Failed to insert block into database", exception);
+            PreparedStatement stmt = database.prepareStatement(blockQuery);
+            stmt.setLong(1, time);
+            stmt.setString(2, userUuid);
+            stmt.setString(3, levelName);
+            stmt.setInt(4, x);
+            stmt.setInt(5, y);
+            stmt.setInt(6, z);
+            stmt.setString(7, material);
+            stmt.setInt(8, blockAction);
+            database.queue.add(stmt);
+        } catch (SQLException e) {
+            GriefLogger.LOGGER.error("Failed to insert block into database", e);
         }
     }
 
     public void insertEntity(long time, String userUuid, String levelName, int x, int y, int z, String entity, int blockAction) {
-        String entityQuery = isMysql()
-                ? "INSERT IGNORE INTO entities(name) VALUES(?)"
-                : "INSERT OR IGNORE INTO entities(name) VALUES(?)";
+        // Insert entity
+        Query.insert("entities")
+                .value("name", entity)
+                .ignore()
+                .queue(database);
 
-        String blockQuery = "INSERT INTO blocks(time, user, level, x, y, z, state_id, type, action) VALUES(" +
-                "?, " +
-                "(SELECT id FROM users WHERE uuid = ?), " +
-                "(SELECT id FROM levels WHERE name = ?), " +
-                "?, ?, ?, " +
-                "NULL, " +
-                "(SELECT id FROM entities WHERE name = ?), " +
-                "?" +
-                ")";
+        // Insert block with subqueries
+        String blockQuery = """
+                INSERT INTO blocks(time, user, level, x, y, z, state_id, type, action) VALUES(
+                ?, (SELECT id FROM users WHERE uuid = ?), (SELECT id FROM levels WHERE name = ?),
+                ?, ?, ?, NULL, (SELECT id FROM entities WHERE name = ?), ?)""";
 
         try {
-            PreparedStatement entityStatement = database.prepareStatement(entityQuery);
-            entityStatement.setString(1, entity);
-            database.queue.add(entityStatement);
-
-            PreparedStatement blockStatement = database.prepareStatement(blockQuery);
-            blockStatement.setLong(1, time);
-            blockStatement.setString(2, userUuid);
-            blockStatement.setString(3, levelName);
-            blockStatement.setInt(4, x);
-            blockStatement.setInt(5, y);
-            blockStatement.setInt(6, z);
-            blockStatement.setString(7, entity);
-            blockStatement.setInt(8, blockAction);
-            database.queue.add(blockStatement);
-        } catch (SQLException exception) {
-            GriefLogger.LOGGER.error("Failed to insert entity into database", exception);
+            PreparedStatement stmt = database.prepareStatement(blockQuery);
+            stmt.setLong(1, time);
+            stmt.setString(2, userUuid);
+            stmt.setString(3, levelName);
+            stmt.setInt(4, x);
+            stmt.setInt(5, y);
+            stmt.setInt(6, z);
+            stmt.setString(7, entity);
+            stmt.setInt(8, blockAction);
+            database.queue.add(stmt);
+        } catch (SQLException e) {
+            GriefLogger.LOGGER.error("Failed to insert entity into database", e);
         }
     }
 
     public List<IHistory> getBlockHistory(String levelName, int x, int y, int z) {
-        List<IHistory> blockHistory = new ArrayList<>();
-        String query = """
-                SELECT blocks.time, users.name, users.uuid, blocks.x, blocks.y, blocks.z, materials.name, blocks.action, blocks.state_id
-                FROM blocks
-                INNER JOIN users ON blocks.user = users.id
-                INNER JOIN levels ON blocks.level = (
-                    SELECT id FROM levels WHERE name = ?
-                )
-                INNER JOIN materials ON blocks.type = materials.id
-                WHERE blocks.level = levels.id AND blocks.x = ? AND blocks.y = ? AND blocks.z = ? AND (blocks.action = 0 OR blocks.action = 1)
-                ORDER BY blocks.time DESC
-                """;
-
-        try (PreparedStatement preparedStatement = database.prepareStatement(query)) {
-            preparedStatement.setString(1, levelName);
-            preparedStatement.setInt(2, x);
-            preparedStatement.setInt(3, y);
-            preparedStatement.setInt(4, z);
-            ResultSet resultSet = preparedStatement.executeQuery();
-            while (resultSet.next()) {
-                blockHistory.add(new BlockHistory(
-                        resultSet.getLong(1),
-                        resultSet.getString(2),
-                        resultSet.getString(3),
-                        resultSet.getInt(4),
-                        resultSet.getInt(5),
-                        resultSet.getInt(6),
-                        resultSet.getString(7),
-                        resultSet.getInt(8),
-                        resultSet.getInt(9)
-                ));
-            }
-        } catch (SQLException e) {
-            GriefLogger.LOGGER.error("Failed to get block history", e);
-        }
-        return blockHistory;
+        return Query.select("blocks")
+                .columns("blocks.time", "users.name", "users.uuid",
+                        "blocks.x", "blocks.y", "blocks.z", "materials.name",
+                        "blocks.action", "blocks.state_id")
+                .join("users", "blocks.user = users.id")
+                .join("levels", "blocks.level = levels.id")
+                .join("materials", "blocks.type = materials.id")
+                .whereEq("levels.name", levelName)
+                .whereEq("blocks.x", x)
+                .whereEq("blocks.y", y)
+                .whereEq("blocks.z", z)
+                .whereIn("blocks.action", List.of(0, 1))
+                .orderByDesc("blocks.time")
+                .execute(database, rs -> mapBlockHistory(rs))
+                .stream().filter(h -> h != null).map(h -> (IHistory) h).toList();
     }
 
-
     public List<IHistory> getInteractionHistory(String levelName, int x, int y, int z) {
-        List<IHistory> blockHistory = new ArrayList<>();
-        String query = """
-                SELECT blocks.time, users.name, users.uuid, blocks.x, blocks.y, blocks.z, materials.name, blocks.action, blocks.state_id
-                FROM blocks
-                INNER JOIN users ON blocks.user = users.id
-                INNER JOIN levels ON blocks.level = (
-                    SELECT id FROM levels WHERE name = ?
-                )
-                INNER JOIN materials ON blocks.type = materials.id
-                WHERE blocks.level = levels.id AND blocks.x = ? AND blocks.y = ? AND blocks.z = ? AND blocks.action = 2
-                ORDER BY blocks.time DESC
-                """;
-
-        try (PreparedStatement preparedStatement = database.prepareStatement(query)) {
-            preparedStatement.setString(1, levelName);
-            preparedStatement.setInt(2, x);
-            preparedStatement.setInt(3, y);
-            preparedStatement.setInt(4, z);
-            ResultSet resultSet = preparedStatement.executeQuery();
-            while (resultSet.next()) {
-                blockHistory.add(new BlockHistory(
-                        resultSet.getLong(1),
-                        resultSet.getString(2),
-                        resultSet.getString(3),
-                        resultSet.getInt(4),
-                        resultSet.getInt(5),
-                        resultSet.getInt(6),
-                        resultSet.getString(7),
-                        resultSet.getInt(8),
-                        resultSet.getInt(9)
-                ));
-            }
-        } catch (SQLException e) {
-            GriefLogger.LOGGER.error("Failed to get block history", e);
-        }
-        return blockHistory;
+        return Query.select("blocks")
+                .columns("blocks.time", "users.name", "users.uuid",
+                        "blocks.x", "blocks.y", "blocks.z", "materials.name",
+                        "blocks.action", "blocks.state_id")
+                .join("users", "blocks.user = users.id")
+                .join("levels", "blocks.level = levels.id")
+                .join("materials", "blocks.type = materials.id")
+                .whereEq("levels.name", levelName)
+                .whereEq("blocks.x", x)
+                .whereEq("blocks.y", y)
+                .whereEq("blocks.z", z)
+                .whereEq("blocks.action", 2)
+                .orderByDesc("blocks.time")
+                .execute(database, rs -> mapBlockHistory(rs))
+                .stream().filter(h -> h != null).map(h -> (IHistory) h).toList();
     }
 
     public void removeInteractionsForPosition(String levelName, int x, int y, int z) {
+        // Need raw SQL for subquery in WHERE
         String query = """
-                DELETE FROM blocks
-                WHERE level = (
-                    SELECT id FROM levels WHERE name = ?
-                ) AND x = ? AND y = ? AND z = ? AND action = 2
-                """;
+                DELETE FROM blocks WHERE level = (SELECT id FROM levels WHERE name = ?)
+                AND x = ? AND y = ? AND z = ? AND action = 2""";
 
         try {
-            PreparedStatement preparedStatement = database.prepareStatement(query);
-            preparedStatement.setString(1, levelName);
-            preparedStatement.setInt(2, x);
-            preparedStatement.setInt(3, y);
-            preparedStatement.setInt(4, z);
-            database.queue.add(preparedStatement);
+            PreparedStatement stmt = database.prepareStatement(query);
+            stmt.setString(1, levelName);
+            stmt.setInt(2, x);
+            stmt.setInt(3, y);
+            stmt.setInt(4, z);
+            database.queue.add(stmt);
         } catch (SQLException e) {
             GriefLogger.LOGGER.error("Failed to remove interactions for position", e);
+        }
+    }
+
+    private BlockHistory mapBlockHistory(ResultSet rs) {
+        try {
+            return new BlockHistory(
+                    rs.getLong(1),
+                    rs.getString(2),
+                    rs.getString(3),
+                    rs.getInt(4),
+                    rs.getInt(5),
+                    rs.getInt(6),
+                    rs.getString(7),
+                    rs.getInt(8),
+                    rs.getInt(9)
+            );
+        } catch (SQLException e) {
+            GriefLogger.LOGGER.error("Failed to map block history", e);
+            return null;
         }
     }
 

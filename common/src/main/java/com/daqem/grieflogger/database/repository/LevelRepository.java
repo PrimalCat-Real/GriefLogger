@@ -1,10 +1,8 @@
 package com.daqem.grieflogger.database.repository;
 
-import com.daqem.grieflogger.GriefLogger;
 import com.daqem.grieflogger.database.Database;
-
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
+import com.daqem.grieflogger.database.orm.query.Query;
+import com.daqem.grieflogger.database.orm.schema.SchemaBuilder;
 
 public class LevelRepository extends Repository {
 
@@ -15,43 +13,16 @@ public class LevelRepository extends Repository {
     }
 
     public void createTable() {
-        String sql = """
-                CREATE TABLE IF NOT EXISTS levels (
-                	id integer PRIMARY KEY,
-                	name text NOT NULL UNIQUE
-                );
-                """;
-        if (isMysql()) {
-            sql = """
-                    CREATE TABLE IF NOT EXISTS levels (
-                    	id int PRIMARY KEY AUTO_INCREMENT,
-                    	name varchar(256) NOT NULL UNIQUE
-                    )
-                    ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4;
-                    """;
-        }
-        database.createTable(sql);
+        SchemaBuilder.create("levels")
+                .id("id")
+                .string("name", 256, false, true)
+                .build(database);
     }
 
     public void insert(String name) {
-        String query = """
-                INSERT OR IGNORE INTO levels(name)
-                VALUES(?);
-                """;
-
-        if (isMysql()) {
-            query = """
-                    INSERT IGNORE INTO levels(name)
-                    VALUES(?);
-                    """;
-        }
-
-        try {
-            PreparedStatement preparedStatement = database.prepareStatement(query);
-            preparedStatement.setString(1, name);
-            database.queue.add(preparedStatement);
-        } catch (SQLException exception) {
-            GriefLogger.LOGGER.error("Failed to insert level into database", exception);
-        }
+        Query.insert("levels")
+                .value("name", name)
+                .ignore()
+                .queue(database);
     }
 }

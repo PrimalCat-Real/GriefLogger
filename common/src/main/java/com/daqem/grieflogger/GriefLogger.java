@@ -21,11 +21,20 @@ import java.util.UUID;
 
 public class GriefLogger {
 
-
     public static final UUID SYSTEM_UUID = new UUID(0L, 0L);
     public static final String SYSTEM_USERNAME = "[System]";
     public static final String MOD_ID = "grieflogger";
     public static final Logger LOGGER = LogUtils.getLogger();
+
+    /**
+     * Database type selector:
+     * 0 = SQLite (default)
+     * 1 = MySQL
+     * 2 = PostgreSQL
+     * TODO: Move to config file
+     */
+    public static int DATABASE_TYPE = 0;
+
     private static Database DATABASE;
 
     public static void init() {
@@ -59,6 +68,10 @@ public class GriefLogger {
     private static boolean prepareDatabase() {
         LOGGER.info("Preparing GriefLogger database...");
         long start = System.currentTimeMillis();
+
+        // Set database type from config (backwards compatible)
+        DATABASE_TYPE = GriefLoggerConfig.useMysql.get() ? 1 : 0;
+
         try {
             DATABASE = new Database();
             boolean connected = DATABASE.createConnection();

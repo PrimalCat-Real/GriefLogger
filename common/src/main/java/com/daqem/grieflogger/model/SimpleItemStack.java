@@ -1,5 +1,6 @@
 package com.daqem.grieflogger.model;
 
+import com.daqem.grieflogger.util.CompressionUtils;
 import io.netty.buffer.Unpooled;
 import net.minecraft.core.component.DataComponentPatch;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -76,15 +77,48 @@ public class SimpleItemStack {
         this.count += count;
     }
 
+    /**
+     * Serializes the tag to compressed bytes for database storage.
+     * Uses GZIP compression to reduce storage size for large NBT data.
+     *
+     * @param level the level for registry access
+     * @return compressed byte array, or null if no tag
+     */
     public byte @Nullable [] getTagBytes(Level level) {
         if (tag == null) {
             return null;
         }
         RegistryFriendlyByteBuf buf = new RegistryFriendlyByteBuf(Unpooled.buffer(), level.registryAccess());
         DataComponentPatch.STREAM_CODEC.encode(buf, tag);
-        byte[] temp = new byte[buf.readableBytes()];
-        buf.readBytes(temp);
-        return temp;
+        byte[] rawBytes = new byte[buf.readableBytes()];
+        buf.readBytes(rawBytes);
+        return CompressionUtils.compress(rawBytes);
+    }
+
+    /**
+     * Deserializes tag bytes from database storage.
+     * Handles both compressed and legacy uncompressed data.
+     *
+     * @param data the byte array from database
+     * @param level the level for registry access
+     * @return the DataComponentPatch, or null if data is null/empty
+     */
+    public static @Nullable DataComponentPatch tagFromBytes(byte @Nullable [] data, Level level) {
+        if (data == null || data.length == 0) {
+            return null;
+        }
+
+        byte[] decompressed;
+        if (CompressionUtils.hasCompressionHeader(data)) {
+            decompressed = CompressionUtils.decompress(data);
+        } else {
+            // Legacy uncompressed data (for backwards compatibility)
+            decompressed = data;
+        }
+
+        RegistryFriendlyByteBuf buf = new RegistryFriendlyByteBuf(
+                Unpooled.wrappedBuffer(decompressed), level.registryAccess());
+        return DataComponentPatch.STREAM_CODEC.decode(buf);
     }
 
     public ItemStack toItemStack() {

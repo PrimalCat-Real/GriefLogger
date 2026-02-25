@@ -3,11 +3,14 @@ package com.daqem.grieflogger.database.repository;
 import com.daqem.grieflogger.GriefLogger;
 import com.daqem.grieflogger.command.filter.*;
 import com.daqem.grieflogger.database.Database;
+import com.daqem.grieflogger.database.orm.Dialect;
+import com.daqem.grieflogger.database.orm.query.Query;
+import com.daqem.grieflogger.database.orm.query.SelectBuilder;
+import com.daqem.grieflogger.database.orm.schema.SchemaBuilder;
 import com.daqem.grieflogger.model.history.SessionHistory;
 import org.jetbrains.annotations.Nullable;
 
 import java.sql.*;
-import java.util.ArrayList;
 import java.util.List;
 
 public class SessionRepository extends Repository {
@@ -19,83 +22,42 @@ public class SessionRepository extends Repository {
     }
 
     public void createTable() {
-        String sql = """
-                CREATE TABLE IF NOT EXISTS sessions (
-                    time integer NOT NULL,
-                    user integer NOT NULL,
-                    level integer NOT NULL,
-                    x integer NOT NULL,
-                    y integer NOT NULL,
-                    z integer NOT NULL,
-                    action integer NOT NULL,
-                    FOREIGN KEY(user) REFERENCES users(id),
-                    FOREIGN KEY(level) REFERENCES levels(id)
-                );
-                """;
-        if (isMysql()) {
-            sql = """
-                    CREATE TABLE IF NOT EXISTS sessions (
-                        time bigint NOT NULL,
-                        user int NOT NULL,
-                        level int NOT NULL,
-                        x int NOT NULL,
-                        y int NOT NULL,
-                        z int NOT NULL,
-                        action int NOT NULL,
-                        FOREIGN KEY(user) REFERENCES users(id),
-                        FOREIGN KEY(level) REFERENCES levels(id)
-                    )
-                    ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4;
-                    """;
-        }
-        database.createTable(sql);
+        SchemaBuilder.create("sessions")
+                .bigint("time")
+                .integer("user")
+                .integer("level")
+                .integer("x")
+                .integer("y")
+                .integer("z")
+                .integer("action")
+                .foreignKey("user", "users", "id")
+                .foreignKey("level", "levels", "id")
+                .index("coordinates", "x", "y", "z")
+                .build(database);
     }
 
     public void createIndexes() {
-        String sql = """
-                CREATE INDEX IF NOT EXISTS coordinates ON sessions (x, y, z);
-                """;
-        if (isMysql()) {
-            sql = """
-                    ALTER TABLE sessions ADD INDEX coordinates (x, y, z);
-                    """;
-        }
-        database.execute(sql, false);
+        // Indexes are now created in createTable via SchemaBuilder
     }
 
     public void insert(long time, String userUuid, String levelName, int x, int y, int z, int sessionAction) {
-        String query = """
-                INSERT OR IGNORE INTO sessions(time, user, level, x, y, z, action)
-                VALUES(?, (
-                    SELECT id FROM users WHERE uuid = ?
-                ), (
-                    SELECT id FROM levels WHERE name = ?
-                ), ?, ?, ?, ?);
-                """;
-
-        if (isMysql()) {
-            query = """
-                    INSERT IGNORE INTO sessions(time, user, level, x, y, z, action)
-                    VALUES(?, (
-                        SELECT id FROM users WHERE uuid = ?
-                    ), (
-                        SELECT id FROM levels WHERE name = ?
-                    ), ?, ?, ?, ?);
-                    """;
-        }
+        Dialect dialect = Dialect.current();
+        String query = dialect.insertIgnore() + """
+                 INTO sessions(time, user, level, x, y, z, action)
+                VALUES(?, (SELECT id FROM users WHERE uuid = ?), (SELECT id FROM levels WHERE name = ?), ?, ?, ?, ?)""";
 
         try {
-            PreparedStatement preparedStatement = database.prepareStatement(query);
-            preparedStatement.setLong(1, time);
-            preparedStatement.setString(2, userUuid);
-            preparedStatement.setString(3, levelName);
-            preparedStatement.setInt(4, x);
-            preparedStatement.setInt(5, y);
-            preparedStatement.setInt(6, z);
-            preparedStatement.setInt(7, sessionAction);
-            database.queue.add(preparedStatement);
-        } catch (SQLException exception) {
-            GriefLogger.LOGGER.error("Failed to insert session into database", exception);
+            PreparedStatement stmt = database.prepareStatement(query);
+            stmt.setLong(1, time);
+            stmt.setString(2, userUuid);
+            stmt.setString(3, levelName);
+            stmt.setInt(4, x);
+            stmt.setInt(5, y);
+            stmt.setInt(6, z);
+            stmt.setInt(7, sessionAction);
+            database.queue.add(stmt);
+        } catch (SQLException e) {
+            GriefLogger.LOGGER.error("Failed to insert session into database", e);
         }
     }
 
@@ -103,61 +65,41 @@ public class SessionRepository extends Repository {
         @Nullable String actions = filterList.getActionString();
         @Nullable String users = filterList.getUserString();
 
-        String query = """
-                SELECT sessions.time, users.name, users.uuid, sessions.x, sessions.y, sessions.z, sessions.action
-                FROM sessions
-                INNER JOIN users ON sessions.user = users.id
-                INNER JOIN levels ON sessions.level = levels.id
-                WHERE levels.name = ?
-                AND sessions.time > ?
-                AND (? IS NULL OR sessions.action IN (%s))
-                AND (? IS NULL OR users.id IN (%s))
-                AND sessions.x BETWEEN ? AND ?
-                AND sessions.y BETWEEN ? AND ?
-                AND sessions.z BETWEEN ? AND ?
-                ORDER BY sessions.time DESC
-                LIMIT 1000;
-                """.formatted(actions, users);
+        SelectBuilder builder = Query.select("sessions")
+                .columns("sessions.time", "users.name", "users.uuid",
+                        "sessions.x", "sessions.y", "sessions.z", "sessions.action")
+                .join("users", "sessions.user = users.id")
+                .join("levels", "sessions.level = levels.id")
+                .whereEq("levels.name", levelName)
+                .whereGt("sessions.time", filterList.getTime())
+                .whereBetween("sessions.x", filterList.getRadiusMinX(), filterList.getRadiusMaxX())
+                .whereBetween("sessions.y", filterList.getRadiusMinY(), filterList.getRadiusMaxY())
+                .whereBetween("sessions.z", filterList.getRadiusMinZ(), filterList.getRadiusMaxZ())
+                .orderByDesc("sessions.time")
+                .limit(1000);
 
-        try (PreparedStatement preparedStatement = database.prepareStatement(query)) {
-            preparedStatement.setString(1, levelName);
-            preparedStatement.setLong(2, filterList.getTime());
-
-            if (actions == null || actions.isEmpty()) {
-                preparedStatement.setNull(3, Types.VARCHAR);
-            } else {
-                preparedStatement.setString(3, actions);
-            }
-
-            if (users == null || users.isEmpty()) {
-                preparedStatement.setNull(4, Types.VARCHAR);
-            } else {
-                preparedStatement.setString(4, users);
-            }
-
-            preparedStatement.setInt(5, filterList.getRadiusMinX());
-            preparedStatement.setInt(6, filterList.getRadiusMaxX());
-            preparedStatement.setInt(7, filterList.getRadiusMinY());
-            preparedStatement.setInt(8, filterList.getRadiusMaxY());
-            preparedStatement.setInt(9, filterList.getRadiusMinZ());
-            preparedStatement.setInt(10, filterList.getRadiusMaxZ());
-
-            List<SessionHistory> sessionHistory = new ArrayList<>();
-            ResultSet resultSet = preparedStatement.executeQuery();
-            while (resultSet.next()) {
-                sessionHistory.add(new SessionHistory(
-                        resultSet.getLong("time"),
-                        resultSet.getString("name"),
-                        resultSet.getString("uuid"),
-                        resultSet.getInt("x"),
-                        resultSet.getInt("y"),
-                        resultSet.getInt("z"),
-                        resultSet.getInt("action")));
-            }
-            return sessionHistory;
-        } catch (SQLException exception) {
-            GriefLogger.LOGGER.error("Failed to get session history from database", exception);
-            return List.of();
+        if (actions != null && !actions.isEmpty()) {
+            builder.whereRaw("sessions.action IN (" + actions + ")");
         }
+        if (users != null && !users.isEmpty()) {
+            builder.whereRaw("users.id IN (" + users + ")");
+        }
+
+        return builder.execute(database, rs -> {
+            try {
+                return new SessionHistory(
+                        rs.getLong("time"),
+                        rs.getString("name"),
+                        rs.getString("uuid"),
+                        rs.getInt("x"),
+                        rs.getInt("y"),
+                        rs.getInt("z"),
+                        rs.getInt("action")
+                );
+            } catch (SQLException e) {
+                GriefLogger.LOGGER.error("Failed to map session history", e);
+                return null;
+            }
+        }).stream().filter(h -> h != null).toList();
     }
 }

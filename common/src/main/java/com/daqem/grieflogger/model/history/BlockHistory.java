@@ -20,9 +20,19 @@ public class BlockHistory extends History {
     private final String material;
 
     public BlockHistory(long time, String name, String uuid, int x, int y, int z, String material, int blockAction, int stateId) {
-
-        this(new Time(time), new User(name, UUID.fromString(uuid)), new BlockPosition(x, y, z), material, BlockAction.fromId(blockAction));
+        this(new Time(time), new User(name, parseUuidOrNull(uuid)), new BlockPosition(x, y, z), material, BlockAction.fromId(blockAction));
         this.stateId = stateId;
+    }
+
+    private static UUID parseUuidOrNull(String uuid) {
+        if (uuid == null || uuid.startsWith("#")) {
+            return null; // Phantom user (e.g., #explosion, #piston, #water)
+        }
+        try {
+            return UUID.fromString(uuid);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 
     public BlockHistory(Time time, User user, BlockPosition position, String material, BlockAction action) {

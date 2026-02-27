@@ -1,7 +1,9 @@
 package com.daqem.grieflogger;
 
+import com.daqem.grieflogger.cache.CacheHandler;
 import com.daqem.grieflogger.config.GriefLoggerConfig;
 import com.daqem.grieflogger.database.Database;
+import com.daqem.grieflogger.database.consumer.Consumer;
 import com.daqem.grieflogger.database.service.*;
 import com.daqem.grieflogger.event.*;
 import com.daqem.grieflogger.event.block.BlockEvents;
@@ -26,6 +28,26 @@ public class GriefLogger {
     public static final String MOD_ID = "grieflogger";
     public static final Logger LOGGER = LogUtils.getLogger();
 
+    // ============================================
+    // PHANTOM USERS - Natural event attribution
+    // ============================================
+    // Phantom users allow logging natural events with proper attribution
+    // instead of ignoring them completely. This enables rollback of
+    // structures destroyed by water, fire, etc.
+
+    public static final String PHANTOM_WATER = "#water";
+    public static final String PHANTOM_LAVA = "#lava";
+    public static final String PHANTOM_FIRE = "#fire";
+    public static final String PHANTOM_DECAY = "#decay";          // Leaf decay
+    public static final String PHANTOM_VINE = "#vine";            // Vine/plant growth
+    public static final String PHANTOM_EXPLOSION = "#explosion";  // TNT, creeper, etc.
+    public static final String PHANTOM_PISTON = "#piston";
+    public static final String PHANTOM_ENDERMAN = "#enderman";
+    public static final String PHANTOM_GRAVITY = "#gravity";      // Sand, gravel falling
+    public static final String PHANTOM_HOPPER = "#hopper";        // Hopper transfers
+    public static final String PHANTOM_CHUTE = "#chute";          // Create mod chute
+    public static final String PHANTOM_UNKNOWN = "#unknown";
+
     /**
      * Database type selector:
      * 0 = SQLite (default)
@@ -43,7 +65,39 @@ public class GriefLogger {
         if (!databaseReady) {
             return;
         }
+        startBackgroundThreads();
         registerEvents();
+    }
+
+    private static void startBackgroundThreads() {
+        // Start database consumer thread (double-buffer queue)
+        Consumer.start(DATABASE);
+
+        // Start cache cleanup thread
+        CacheHandler.start();
+
+        LOGGER.info("Background threads started");
+    }
+
+    /**
+     * Shutdown GriefLogger and cleanup resources.
+     * Should be called when server is stopping.
+     */
+    public static void shutdown() {
+        LOGGER.info("Shutting down GriefLogger...");
+
+        // Stop consumer thread (will process remaining queue)
+        Consumer.stop();
+
+        // Stop cache handler thread
+        CacheHandler.stop();
+
+        // Perform final WAL checkpoint for SQLite
+        if (DATABASE != null && DATABASE_TYPE == 0) {
+            DATABASE.performWalCheckpoint();
+        }
+
+        LOGGER.info("GriefLogger shutdown complete");
     }
 
     private static void initConfigs() {
@@ -54,7 +108,8 @@ public class GriefLogger {
         BlockEvents.registerEvents();
         TickEvents.registerEvents();
         EntityEvents.registerEvents();
-        ItemEvents.registerEvents();
+        // TODO: Item logging disabled for rework
+        // ItemEvents.registerEvents();
 
         PlayerJoinEvent.registerEvent();
         PlayerQuitEvent.registerEvent();
@@ -99,6 +154,7 @@ public class GriefLogger {
         Services.CHAT.createTable();
         Services.COMMAND.createTable();
         Services.ITEM.createTable();
+        Services.ROLLBACK.createTable();
 
         if (GriefLoggerConfig.useIndexes.get()) {
             Services.BLOCK.createIndexes();
@@ -107,6 +163,7 @@ public class GriefLogger {
             Services.CONTAINER.createIndexes();
             Services.ITEM.createIndexes();
             Services.SESSION.createIndexes();
+            Services.ROLLBACK.createIndexes();
         }
         try {
             Services.USER.insertOrUpdateName(SYSTEM_UUID, SYSTEM_USERNAME);

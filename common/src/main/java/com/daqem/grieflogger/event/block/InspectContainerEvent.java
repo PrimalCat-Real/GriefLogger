@@ -1,5 +1,6 @@
 package com.daqem.grieflogger.event.block;
 
+import com.daqem.grieflogger.GriefLogger;
 import com.daqem.grieflogger.database.service.Services;
 import com.daqem.grieflogger.event.AbstractEvent;
 import com.daqem.grieflogger.model.history.IHistory;
@@ -16,6 +17,9 @@ public class InspectContainerEvent extends AbstractEvent {
 
     public static EventResult inspectContainer(GriefLoggerServerPlayer serverPlayer, Level level, BlockPos pos) {
         ThreadManager.submit(() -> {
+            // Flush pending queues to ensure all recent changes are written to DB
+            GriefLogger.getDatabase().flushQueues();
+
             List<IHistory> history = new ArrayList<>();
             List<IHistory> containerHistory = Services.CONTAINER.getHistory(
                     level,
@@ -34,6 +38,9 @@ public class InspectContainerEvent extends AbstractEvent {
 
     public static EventResult inspectContainers(GriefLoggerServerPlayer serverPlayer, Level level, BlockPos pos, BlockPos connectionPos) {
         ThreadManager.submit(() -> {
+            // Flush pending queues to ensure all recent changes are written to DB
+            GriefLogger.getDatabase().flushQueues();
+
             List<IHistory> history = new ArrayList<>();
             List<IHistory> containerHistory = Services.CONTAINER.getHistory(
                     level,

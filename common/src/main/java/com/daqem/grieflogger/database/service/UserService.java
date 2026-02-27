@@ -29,4 +29,12 @@ public class UserService {
     public Map<Integer, String> getAllUsernames() {
         return userRepository.getAllUsernames();
     }
+
+    /**
+     * Insert a phantom user (e.g., #chute, #hopper) if it doesn't exist.
+     * Phantom users represent automated/mechanical transfers.
+     */
+    public void insertPhantomUser(String phantomName) {
+        userRepository.insertPhantomUser(phantomName);
+    }
 }

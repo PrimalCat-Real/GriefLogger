@@ -6,6 +6,10 @@ loom {
     accessWidenerPath = file("src/main/resources/grieflogger.accesswidener")
 }
 
+repositories {
+    maven { url = "https://oss.sonatype.org/content/repositories/snapshots/" }
+}
+
 dependencies {
     // We depend on fabric loader here to use the fabric @Environment annotations and get the mixin dependencies
     // Do NOT use other classes from fabric loader
@@ -14,6 +18,12 @@ dependencies {
     modApi "dev.architectury:architectury:${rootProject.architectury_version}"
 
     compileOnlyApi "curse.maven:supermartijn642s-config-lib-438332:${project.config_library_file_fabric}"
+
+    // Kyori Adventure for hex colors, gradients, MiniMessage
+    // Provided by server (Mohist) at runtime, not bundled
+    compileOnly "net.kyori:adventure-api:${rootProject.kyori_version}"
+    compileOnly "net.kyori:adventure-text-minimessage:${rootProject.kyori_version}"
+    compileOnly "net.kyori:adventure-text-serializer-gson:${rootProject.kyori_version}"
 }
 
 publishing {

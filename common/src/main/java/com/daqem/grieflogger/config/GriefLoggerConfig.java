@@ -23,10 +23,24 @@ public class GriefLoggerConfig {
 
     public static final Supplier<Integer> maxPageSize;
 
+    public static final Supplier<Integer> rollbackBatchSize;
+    public static final Supplier<Integer> purgeMinDays;
+
     public static final Supplier<Boolean> serverSideOnlyMode;
 
     public static final Supplier<Integer> queueFrequency;
     public static final Supplier<Integer> helloFrequency;
+
+    // Logging settings - what natural events to log
+    public static final Supplier<Boolean> logWaterFlow;
+    public static final Supplier<Boolean> logLavaFlow;
+    public static final Supplier<Boolean> logLeafDecay;
+    public static final Supplier<Boolean> logFireSpread;
+    public static final Supplier<Boolean> logVineGrowth;
+    public static final Supplier<Boolean> logExplosions;
+    public static final Supplier<Boolean> logPistons;
+    public static final Supplier<Boolean> logGravity;
+    public static final Supplier<Boolean> logEntityChanges;
 
     static {
         IConfigBuilder config = ConfigBuilders.newTomlConfig(GriefLogger.MOD_ID, GriefLogger.MOD_ID, true);
@@ -45,6 +59,11 @@ public class GriefLoggerConfig {
         maxPageSize = config.comment("Maximum page size").onlyOnServer().define("maxPageSize", 10, 1, 100);
         config.pop();
 
+        config.push("rollback");
+        rollbackBatchSize = config.comment("Number of blocks to process per tick during rollback (lower = less lag, slower rollback)").onlyOnServer().define("rollbackBatchSize", 500, 50, 5000);
+        purgeMinDays = config.comment("Minimum days for purge command (safety limit)").onlyOnServer().define("purgeMinDays", 7, 1, 365);
+        config.pop();
+
         config.push("server");
         serverSideOnlyMode = config.comment("Whether to run the mod in server side only mode").onlyOnServer().define("serverSideOnlyMode", true);
         config.pop();
@@ -55,6 +74,18 @@ public class GriefLoggerConfig {
 
         config.push("hello");
         helloFrequency = config.comment("The frequency at which the hello packet is sent to the server (every 'x' ticks)").onlyOnServer().define("helloFrequency", 600, 1, 1000);
+        config.pop();
+
+        config.push("logging");
+        logWaterFlow = config.comment("Log water flow events (attributed to #water)").onlyOnServer().define("waterFlow", true);
+        logLavaFlow = config.comment("Log lava flow events (attributed to #lava)").onlyOnServer().define("lavaFlow", true);
+        logLeafDecay = config.comment("Log leaf decay events (attributed to #decay)").onlyOnServer().define("leafDecay", true);
+        logFireSpread = config.comment("Log fire spread events (attributed to #fire)").onlyOnServer().define("fireSpread", true);
+        logVineGrowth = config.comment("Log vine/plant growth events (attributed to #vine). Can generate a lot of data!").onlyOnServer().define("vineGrowth", false);
+        logExplosions = config.comment("Log explosion events (TNT, creeper) (attributed to #explosion)").onlyOnServer().define("explosions", true);
+        logPistons = config.comment("Log piston push/pull events (attributed to #piston)").onlyOnServer().define("pistons", true);
+        logGravity = config.comment("Log falling block events like sand/gravel (attributed to #gravity)").onlyOnServer().define("gravity", true);
+        logEntityChanges = config.comment("Log entity-caused block changes (enderman, etc.)").onlyOnServer().define("entityChanges", true);
         config.pop();
 
         config.build();

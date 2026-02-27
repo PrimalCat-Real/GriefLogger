@@ -88,11 +88,57 @@ public class Database {
         }
         try {
             connection = DriverManager.getConnection("jdbc:sqlite:database.db");
+            configureSqlitePerformance();
         } catch (SQLException e) {
             GriefLogger.LOGGER.error("Failed to connect to SQLite database", e);
             return false;
         }
         return connection != null;
+    }
+
+    /**
+     * Configure SQLite for optimal write performance.
+     * WAL mode allows concurrent reads during writes and improves throughput.
+     */
+    private void configureSqlitePerformance() {
+        if (connection == null) return;
+
+        try (Statement pragmaStatement = connection.createStatement()) {
+            // WAL mode: Write-Ahead Logging for better concurrency
+            pragmaStatement.execute("PRAGMA journal_mode=WAL;");
+
+            // NORMAL synchronous: Good balance between safety and speed
+            // FULL is safest but slower, OFF is fastest but risky
+            pragmaStatement.execute("PRAGMA synchronous=NORMAL;");
+
+            // Increase cache size (negative = KB, positive = pages)
+            // 10000 pages * 4KB = ~40MB cache
+            pragmaStatement.execute("PRAGMA cache_size=10000;");
+
+            // Memory-mapped I/O size (256MB)
+            pragmaStatement.execute("PRAGMA mmap_size=268435456;");
+
+            // Temporary tables in memory
+            pragmaStatement.execute("PRAGMA temp_store=MEMORY;");
+
+            GriefLogger.LOGGER.info("SQLite WAL mode enabled with performance optimizations");
+        } catch (SQLException e) {
+            GriefLogger.LOGGER.warn("Failed to configure SQLite performance settings", e);
+        }
+    }
+
+    /**
+     * Perform WAL checkpoint to consolidate the write-ahead log.
+     * Should be called periodically (e.g., every 5-10 minutes).
+     */
+    public void performWalCheckpoint() {
+        if (GriefLogger.DATABASE_TYPE != 0 || connection == null) return;
+
+        try (Statement checkpointStatement = connection.createStatement()) {
+            checkpointStatement.execute("PRAGMA wal_checkpoint(TRUNCATE);");
+        } catch (SQLException e) {
+            GriefLogger.LOGGER.warn("Failed to perform WAL checkpoint", e);
+        }
     }
 
     public void createTable(String sql) {
@@ -147,12 +193,54 @@ public class Database {
                 }
             }
             if (!statements.isEmpty()) {
-                if (connection != null) {
-                    connection.commit();
-                }
+                commit();
             }
         } catch (SQLException e) {
             GriefLogger.LOGGER.error("Failed to execute statements", e);
         }
+    }
+
+    /**
+     * Commit the current transaction.
+     */
+    public void commit() {
+        if (connection != null) {
+            try {
+                connection.commit();
+            } catch (SQLException e) {
+                GriefLogger.LOGGER.error("Failed to commit transaction", e);
+            }
+        }
+    }
+
+    /**
+     * Get the underlying connection.
+     * Use sparingly - prefer using prepared statements through queue.
+     */
+    @Nullable
+    public Connection getConnection() {
+        return connection;
+    }
+
+    /**
+     * Check if the database connection is valid.
+     */
+    public boolean isConnected() {
+        if (connection == null) return false;
+        try {
+            return connection.isValid(5);  // 5 second timeout
+        } catch (SQLException e) {
+            return false;
+        }
+    }
+
+    /**
+     * Flush all pending queues immediately.
+     * This ensures all queued statements are written to the database
+     * before running queries that need fresh data (like inspect).
+     */
+    public void flushQueues() {
+        queue.execute();
+        batchQueue.execute();
     }
 }

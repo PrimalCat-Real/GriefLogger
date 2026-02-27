@@ -33,6 +33,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.*;
+import java.util.OptionalInt;
 
 @Mixin(ServerPlayer.class)
 public abstract class MixinServerPlayer extends Player implements GriefLoggerServerPlayer {
@@ -93,12 +94,17 @@ public abstract class MixinServerPlayer extends Player implements GriefLoggerSer
 
     @Inject(at = @At("HEAD"), method = "openMenu")
     public void openMenu(MenuProvider menuProvider, CallbackInfoReturnable<OptionalInt> cir) {
+        // Only run on server side
+        if (level().isClientSide()) return;
+
         Optional<BaseContainerBlockEntity> container = ContainerHandler.getContainer(menuProvider);
         if (container.isPresent()) {
             this.grieflogger$containerTransactionManager = new ContainerTransactionManager(container.get());
+            GriefLogger.LOGGER.debug("[Container] Opened container at {}", container.get().getBlockPos().toShortString());
         } else {
             ContainerHandler.getContainers(menuProvider).ifPresent(containers -> {
                 this.grieflogger$containerTransactionManager = new ContainersTransactionManager(containers);
+                GriefLogger.LOGGER.debug("[Container] Opened {} containers", containers.size());
             });
         }
     }
@@ -117,10 +123,26 @@ public abstract class MixinServerPlayer extends Player implements GriefLoggerSer
     @Inject(at = @At("HEAD"), method = "tick")
     public void grieflogger$tick(CallbackInfo ci) {
         EnvExecutor.getInEnv(EnvType.SERVER, () -> () -> {
+            // Process item queue
             if (!grieflogger$itemQueue.isEmpty()) {
+                // Log item changes to console
+                for (Map.Entry<ItemAction, List<SimpleItemStack>> entry : grieflogger$itemQueue.entrySet()) {
+                    for (SimpleItemStack item : entry.getValue()) {
+                        GriefLogger.LOGGER.info("[Item] Action={} User={} Item={}x{} Pos={}",
+                                entry.getKey(), getName().getString(),
+                                item.getItem().arch$registryName(), item.getCount(),
+                                blockPosition().toShortString());
+                    }
+                }
                 Services.ITEM.insertMap(getUUID(), level(), blockPosition(), new HashMap<>(grieflogger$itemQueue));
                 grieflogger$itemQueue.clear();
             }
+
+            // Tick container transaction manager (real-time tracking)
+            if (grieflogger$containerTransactionManager != null) {
+                grieflogger$containerTransactionManager.tick(grieflogger$asServerPlayer());
+            }
+
             return null;
         });
     }

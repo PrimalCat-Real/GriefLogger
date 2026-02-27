@@ -3,15 +3,15 @@ package com.daqem.grieflogger.command.filter;
 import com.daqem.grieflogger.GriefLogger;
 import com.mojang.brigadier.StringReader;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
-import com.mojang.brigadier.suggestion.SuggestionsBuilder;
-import net.minecraft.core.Registry;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.world.item.Item;
 
-import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Include filter for lookup/rollback commands.
+ * Supports CoreProtect-style format: i:stone, include:diamond_ore
+ * Aliases: i, include, item, items, b, block, blocks
+ */
 public class IncludeFilter extends ItemFilter {
 
     public IncludeFilter() {
@@ -25,6 +25,16 @@ public class IncludeFilter extends ItemFilter {
     @Override
     public String getName() {
         return GriefLogger.translate("filter.include").getString();
+    }
+
+    @Override
+    public List<String> getAllPrefixes() {
+        return List.of("i", "include", "item", "items", "b", "block", "blocks");
+    }
+
+    @Override
+    protected char getSuggestionPrefix() {
+        return 'i';
     }
 
     @Override

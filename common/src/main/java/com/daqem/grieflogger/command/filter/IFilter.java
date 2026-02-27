@@ -9,28 +9,48 @@ import java.util.List;
 
 public interface IFilter {
 
+    /**
+     * Short prefix character (e.g., 'u' for user, 't' for time)
+     */
     default char getPrefix() {
         return getName().charAt(0);
     }
 
+    /**
+     * Full name of the filter (e.g., "user", "time", "action")
+     */
     String getName();
 
+    /**
+     * Available options for autocomplete
+     */
     List<String> getOptions();
 
+    /**
+     * Get all valid prefixes for this filter (short and full)
+     * E.g., for user: ["u", "user", "users", "p"]
+     */
+    default List<String> getAllPrefixes() {
+        return List.of(String.valueOf(getPrefix()), getName());
+    }
+
     default String[] listSuggestions(SuggestionsBuilder builder, String prefix, String suffix) {
+        // Use short prefix format for suggestions (e.g., "u:Steve" instead of "user:Steve")
+        String suggestionPrefix = String.valueOf(getPrefix()) + ":";
+
         if (suffix.contains(",")) {
             int lastIndexOf = suffix.lastIndexOf(",");
-            String[] usedUsernames = suffix.substring(0, lastIndexOf).split(",");
+            String[] usedValues = suffix.substring(0, lastIndexOf).split(",");
             String suffixPrefix = suffix.substring(0, lastIndexOf);
 
             return getOptions().stream()
-                    .filter(s -> !Arrays.asList(usedUsernames).contains(s))
-                    .map(s -> getName() + '.' + suffixPrefix + "," + s)
+                    .filter(s -> !Arrays.asList(usedValues).contains(s))
+                    .map(s -> suggestionPrefix + suffixPrefix + "," + s)
                     .toArray(String[]::new);
         }
 
         return getOptions().stream()
-                .map(s -> getName() + '.' + s)
+                .map(s -> suggestionPrefix + s)
                 .toArray(String[]::new);
     }
 
@@ -38,9 +58,25 @@ public interface IFilter {
 
     default String[] listSuggestions(SuggestionsBuilder builder) {
         String str = builder.getRemaining();
-        String[] split = str.split("\\.");
-        String prefix = split[0];
-        String suffix = split.length > 1 ? split[1] : "";
+        // Support both ":" format (CoreProtect style)
+        int colonIndex = str.indexOf(':');
+        String prefix;
+        String suffix;
+
+        if (colonIndex != -1) {
+            prefix = str.substring(0, colonIndex);
+            suffix = str.length() > colonIndex + 1 ? str.substring(colonIndex + 1) : "";
+        } else {
+            // Fallback: try old "." format for backwards compatibility
+            int dotIndex = str.indexOf('.');
+            if (dotIndex != -1) {
+                prefix = str.substring(0, dotIndex);
+                suffix = str.length() > dotIndex + 1 ? str.substring(dotIndex + 1) : "";
+            } else {
+                prefix = str;
+                suffix = "";
+            }
+        }
 
         return listSuggestions(builder, prefix, suffix);
     }

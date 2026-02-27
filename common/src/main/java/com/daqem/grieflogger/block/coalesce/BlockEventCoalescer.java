@@ -5,6 +5,7 @@ import com.daqem.grieflogger.database.service.Services;
 import com.daqem.grieflogger.model.action.BlockAction;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.block.entity.BaseContainerBlockEntity;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
@@ -37,23 +38,27 @@ public final class BlockEventCoalescer {
             return;
         }
 
+        boolean isPlayerCaused = !GriefLogger.SYSTEM_UUID.equals(userUuid);
+        String phantomUser = null;
 
+        // Apply filtering for system (non-player) events
+        if (!isPlayerCaused) {
+            BlockChangeFilter.FilterResult filterResult = BlockChangeFilter.evaluateChange(
+                    level, immutablePos, oldState, newState, false);
 
-        if (GriefLogger.SYSTEM_UUID.equals(userUuid)) {
-            if (!BlockChangeFilter.shouldLog(level, immutablePos, oldState, newState)) {
+            if (!filterResult.shouldLog()) {
                 return;
             }
-        }
 
-        GriefLogger.LOGGER.info("[Coalescer] INCOMING: {} at {} by {} (Kind: {})",
-                newState.getBlock().getName().getString(), immutablePos.toShortString(), userUuid, kind);
+            phantomUser = filterResult.phantomUser();
+        }
 
         long tick = level.getGameTime();
         String key = makeKey(level.dimension(), immutablePos);
         Aggregate agg = byKey.get(key);
 
         if (agg == null || agg.tick != tick) {
-            agg = new Aggregate(tick, kind, immutablePos, userUuid);
+            agg = new Aggregate(tick, kind, immutablePos, userUuid, phantomUser);
             byKey.put(key, agg);
             if (kind == BlockEventKind.SYSTEM_BREAK || kind == BlockEventKind.PLAYER_BREAK) {
                 captureBlockEntityData(level, immutablePos, agg);
@@ -63,6 +68,12 @@ public final class BlockEventCoalescer {
             if (kind.priority > agg.kind.priority) {
                 agg.kind = kind;
                 agg.userUuid = userUuid;
+                // Update phantom user if transitioning from system to player
+                if (isPlayerCaused) {
+                    agg.phantomUser = null;
+                } else if (phantomUser != null) {
+                    agg.phantomUser = phantomUser;
+                }
 
                 if (agg.preDestructionNbt == null && (kind == BlockEventKind.SYSTEM_BREAK || kind == BlockEventKind.PLAYER_BREAK)) {
                     captureBlockEntityData(level, immutablePos, agg);
@@ -78,7 +89,58 @@ public final class BlockEventCoalescer {
         }
     }
 
-    // Захват NBT данных из TileEntity
+    /**
+     * Record a block change with explicit phantom user attribution.
+     * Used for events where we know the source (e.g., explosion, piston).
+     */
+    public static synchronized void recordWithPhantom(ServerLevel level, BlockPos pos,
+                                                       BlockState oldState, BlockState newState,
+                                                       BlockEventKind kind, String phantomUser) {
+
+        BlockPos immutablePos = pos.immutable();
+
+        if (BlockEventLock.isLocked()) {
+            return;
+        }
+
+        // Check proximity to players
+        if (!BlockChangeFilter.evaluateChange(level, immutablePos, oldState, newState, false).shouldLog()) {
+            // Still check basic conditions like player proximity
+            return;
+        }
+
+        long tick = level.getGameTime();
+        String key = makeKey(level.dimension(), immutablePos);
+        Aggregate agg = byKey.get(key);
+
+        if (agg == null || agg.tick != tick) {
+            agg = new Aggregate(tick, kind, immutablePos, GriefLogger.SYSTEM_UUID, phantomUser);
+            byKey.put(key, agg);
+            if (kind == BlockEventKind.SYSTEM_BREAK || kind == BlockEventKind.PLAYER_BREAK) {
+                captureBlockEntityData(level, immutablePos, agg);
+            }
+            agg.oldState = oldState;
+        } else {
+            if (kind.priority > agg.kind.priority) {
+                agg.kind = kind;
+                agg.phantomUser = phantomUser;
+                agg.userUuid = GriefLogger.SYSTEM_UUID;
+
+                if (agg.preDestructionNbt == null && (kind == BlockEventKind.SYSTEM_BREAK || kind == BlockEventKind.PLAYER_BREAK)) {
+                    captureBlockEntityData(level, immutablePos, agg);
+                }
+            }
+        }
+
+        agg.newState = newState;
+
+        if (lastPurgeTick != tick) {
+            purgeAndEmitOlder(level, tick);
+            lastPurgeTick = tick;
+        }
+    }
+
+    // Capture NBT data from TileEntity
     private static void captureBlockEntityData(ServerLevel level, BlockPos pos, Aggregate agg) {
         BlockEntity blockEntity = level.getBlockEntity(pos);
         if (blockEntity != null) {
@@ -129,17 +191,34 @@ public final class BlockEventCoalescer {
 
         if (targetState == null || targetState.isAir()) return;
 
-        GriefLogger.LOGGER.info("[Coalescer] EMIT TO DB: Action={} User={} Block={} Pos={}",
-                action, agg.userUuid, targetState.getBlock().getName().getString(), agg.position.toShortString());
+        // Log only container blocks to console
+        boolean isContainer = level.getBlockEntity(agg.position) instanceof BaseContainerBlockEntity;
+        if (isContainer) {
+            String userIdentifier = agg.isPhantom() ? agg.phantomUser : agg.userUuid.toString();
+            GriefLogger.LOGGER.info("[Container] Action={} User={} Block={} Pos={}",
+                    action, userIdentifier, targetState.getBlock().getName().getString(), agg.position.toShortString());
+        }
 
-        Services.BLOCK.insertBlockState(
-                agg.userUuid,
-                level.dimension().location().toString(),
-                agg.position,
-                targetState,
-                action
-        );
+        // Insert with phantom user or regular UUID
+        if (agg.isPhantom()) {
+            Services.BLOCK.insertBlockStateWithPhantom(
+                    agg.phantomUser,
+                    level.dimension().location().toString(),
+                    agg.position,
+                    targetState,
+                    action
+            );
+        } else {
+            Services.BLOCK.insertBlockState(
+                    agg.userUuid,
+                    level.dimension().location().toString(),
+                    agg.position,
+                    targetState,
+                    action
+            );
+        }
     }
+
     public static void flush(ServerLevel level) {
         purgeAndEmitOlder(level, Long.MAX_VALUE);
     }

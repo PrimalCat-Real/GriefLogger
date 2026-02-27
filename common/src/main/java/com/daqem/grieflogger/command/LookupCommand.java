@@ -8,6 +8,7 @@ import com.daqem.grieflogger.database.service.Services;
 import com.daqem.grieflogger.model.history.*;
 import com.daqem.grieflogger.player.GriefLoggerServerPlayer;
 import com.daqem.grieflogger.thread.ThreadManager;
+import com.daqem.grieflogger.util.Theme;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import net.minecraft.commands.CommandSourceStack;
@@ -25,41 +26,64 @@ public class LookupCommand implements ICommand {
     public LiteralArgumentBuilder<CommandSourceStack> getCommand() {
         return Commands.literal("lookup")
                 .requires(source -> source.hasPermission(2))
-                .then(Commands.argument("filter1", StringArgumentType.string())
-                        .suggests((context, builder) -> new FilterArgument().listSuggestions(context, builder))
-                        .then(Commands.argument("filter2", StringArgumentType.string())
-                                .suggests((context, builder) -> new FilterArgument().listSuggestions(context, builder))
-                                .then(Commands.argument("filter3", StringArgumentType.string())
-                                        .suggests((context, builder) -> new FilterArgument().listSuggestions(context, builder))
-                                        .then(Commands.argument("filter4", StringArgumentType.string())
-                                                .suggests((context, builder) -> new FilterArgument().listSuggestions(context, builder))
-                                                .then(Commands.argument("filter5", StringArgumentType.string())
-                                                        .suggests((context, builder) -> new FilterArgument().listSuggestions(context, builder))
-                                                        .executes(context -> lookup(context.getSource(), new FilterList(List.of(FilterArgument.getFilter(context, "filter1"), FilterArgument.getFilter(context, "filter2"), FilterArgument.getFilter(context, "filter3"), FilterArgument.getFilter(context, "filter4"), FilterArgument.getFilter(context, "filter5")), context.getSource()))))
-                                                .executes(context -> lookup(context.getSource(), new FilterList(List.of(FilterArgument.getFilter(context, "filter1"), FilterArgument.getFilter(context, "filter2"), FilterArgument.getFilter(context, "filter3"), FilterArgument.getFilter(context, "filter4")), context.getSource()))))
-                                        .executes(context -> lookup(context.getSource(), new FilterList(List.of(FilterArgument.getFilter(context, "filter1"), FilterArgument.getFilter(context, "filter2"), FilterArgument.getFilter(context, "filter3")), context.getSource()))))
-                                .executes(context -> lookup(context.getSource(), new FilterList(List.of(FilterArgument.getFilter(context, "filter1"), FilterArgument.getFilter(context, "filter2")), context.getSource()))))
-                .executes(context -> lookup(context.getSource(), new FilterList(List.of(FilterArgument.getFilter(context, "filter1")), context.getSource()))));
+                .then(Commands.argument("filters", StringArgumentType.greedyString())
+                        .suggests(FilterArgument::suggestFilters)
+                        .executes(context -> {
+                            String raw = StringArgumentType.getString(context, "filters");
+                            FilterList filterList = FilterArgument.parseFilters(raw, context.getSource());
+                            return lookup(context.getSource(), filterList);
+                        }));
     }
 
     @SuppressWarnings("SameReturnValue")
     private static int lookup(CommandSourceStack source, FilterList filterList) {
-        if (source.getPlayer() instanceof GriefLoggerServerPlayer player) {
-            ThreadManager.submit(() -> getHistory(source.getLevel(), filterList), filteredHistory -> {
-                if (filteredHistory.isEmpty()) {
-                    source.sendFailure(GriefLogger.translate("lookup.no_results", GriefLogger.getName()));
-                    return;
-                }
-                List<Page> pages = Page.convertToPages(filteredHistory, false);
-                player.grieflogger$setPages(pages);
-                Page pageToDisplay = pages.get(0);
-                pageToDisplay.sendToPlayer((ServerPlayer) player);
-            });
+        if (source.getPlayer() instanceof ServerPlayer serverPlayer) {
+            executeLookup(serverPlayer, filterList, 1);
         }
         return 1;
     }
 
+    /**
+     * Execute a lookup with the given filters and display the specified page.
+     * Can be called from other commands (e.g., NearCommand).
+     *
+     * @param player The player to show results to
+     * @param filterList The filters to apply
+     * @param pageNumber The page number to display (1-indexed)
+     */
+    public static void executeLookup(ServerPlayer player, FilterList filterList, int pageNumber) {
+        if (player instanceof GriefLoggerServerPlayer griefLoggerPlayer) {
+            ThreadManager.submit(() -> getHistory(player.level(), filterList), filteredHistory -> {
+                if (filteredHistory.isEmpty()) {
+                    player.sendSystemMessage(GriefLogger.translate("lookup.no_results", GriefLogger.getName()));
+                    return;
+                }
+
+                // Handle #count flag - only show count, not results
+                if (filterList.isCountOnly()) {
+                    int count = filteredHistory.size();
+                    player.sendSystemMessage(Theme.toMinecraft(
+                            Theme.success("Found ")
+                                    .append(Theme.accent(String.valueOf(count)))
+                                    .append(Theme.success(" records matching your query."))
+                    ));
+                    return;
+                }
+
+                List<Page> pages = Page.convertToPages(filteredHistory, false);
+                griefLoggerPlayer.grieflogger$setPages(pages);
+
+                int displayPage = Math.max(1, Math.min(pageNumber, pages.size()));
+                Page pageToDisplay = pages.get(displayPage - 1);
+                pageToDisplay.sendToPlayer(player);
+            });
+        }
+    }
+
     private static List<IHistory> getHistory(Level level, FilterList filterList) {
+        // Flush pending queues to ensure all recent changes are written to DB
+        GriefLogger.getDatabase().flushQueues();
+
         List<SessionHistory> filteredSessionHistory = Services.SESSION.getFilteredSessionHistory(level, filterList);
         List<IHistory> filteredBlockHistory = Services.BLOCK.getFilteredBlockHistory(level, filterList);
         List<IHistory> filteredContainerHistory = Services.CONTAINER.getFilteredContainerHistory(level, filterList);

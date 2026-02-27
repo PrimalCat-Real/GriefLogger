@@ -3,12 +3,14 @@ package com.daqem.grieflogger.command.filter;
 import com.daqem.grieflogger.GriefLogger;
 import com.mojang.brigadier.StringReader;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
-import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import net.minecraft.world.item.Item;
 
-import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Exclude filter for lookup/rollback commands.
+ * Supports CoreProtect-style format: e:stone, exclude:dirt
+ */
 public class ExcludeFilter extends ItemFilter {
 
     public ExcludeFilter() {
@@ -22,6 +24,16 @@ public class ExcludeFilter extends ItemFilter {
     @Override
     public String getName() {
         return GriefLogger.translate("filter.exclude").getString();
+    }
+
+    @Override
+    public List<String> getAllPrefixes() {
+        return List.of("e", "exclude");
+    }
+
+    @Override
+    protected char getSuggestionPrefix() {
+        return 'e';
     }
 
     @Override

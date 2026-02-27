@@ -92,4 +92,20 @@ public class ContainerService {
                 filterList
         );
     }
+
+    /**
+     * Insert container transaction with phantom user (automated transfer like chute/hopper).
+     */
+    public void insertWithPhantom(String phantomUser, Level level, BlockPos pos, SimpleItemStack item, ItemAction itemAction) {
+        containerRepository.insertWithPhantom(
+                System.currentTimeMillis(),
+                phantomUser,
+                level,
+                pos.getX(),
+                pos.getY(),
+                pos.getZ(),
+                item,
+                itemAction.getId()
+        );
+    }
 }

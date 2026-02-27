@@ -107,6 +107,58 @@ public class BlockRepository extends Repository {
         }
     }
 
+    /**
+     * Insert block state with phantom user attribution (e.g., #water, #fire).
+     * Phantom users represent natural events and are stored as special UUIDs.
+     */
+    public void insertBlockStateWithPhantom(long time, String phantomUser, String levelName, int x, int y, int z, BlockState state, int blockAction) {
+        String stateString = BlockStateUtils.serialize(state);
+        String materialName = BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString();
+
+        // Ensure phantom user exists in users table
+        // Use phantom user name as both UUID and name for easy identification
+        Query.insert("users")
+                .value("uuid", phantomUser)
+                .value("name", phantomUser)
+                .ignore()
+                .queue(database);
+
+        // Insert state
+        Query.insert("block_states")
+                .value("state_string", stateString)
+                .ignore()
+                .queue(database);
+
+        // Insert material
+        Query.insert("materials")
+                .value("name", materialName)
+                .ignore()
+                .queue(database);
+
+        // Insert block with phantom user
+        String blockQuery = """
+                INSERT INTO blocks(time, user, level, x, y, z, state_id, type, action) VALUES(
+                ?, (SELECT id FROM users WHERE uuid = ?), (SELECT id FROM levels WHERE name = ?),
+                ?, ?, ?, (SELECT id FROM block_states WHERE state_string = ?),
+                (SELECT id FROM materials WHERE name = ?), ?)""";
+
+        try {
+            PreparedStatement stmt = database.prepareStatement(blockQuery);
+            stmt.setLong(1, time);
+            stmt.setString(2, phantomUser);  // Use phantom user as UUID
+            stmt.setString(3, levelName);
+            stmt.setInt(4, x);
+            stmt.setInt(5, y);
+            stmt.setInt(6, z);
+            stmt.setString(7, stateString);
+            stmt.setString(8, materialName);
+            stmt.setInt(9, blockAction);
+            database.queue.add(stmt);
+        } catch (SQLException e) {
+            GriefLogger.LOGGER.error("Failed to insert block state with phantom user", e);
+        }
+    }
+
     public void insertMaterial(long time, String userUuid, String levelName, int x, int y, int z, String material, int blockAction) {
         // Insert material
         Query.insert("materials")

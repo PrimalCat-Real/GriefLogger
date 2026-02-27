@@ -1,5 +1,6 @@
 package com.daqem.grieflogger.database.service;
 
+import com.daqem.grieflogger.GriefLogger;
 import com.daqem.grieflogger.command.filter.FilterList;
 import com.daqem.grieflogger.database.Database;
 import com.daqem.grieflogger.database.repository.BlockRepository;
@@ -17,9 +18,11 @@ import java.util.UUID;
 
 public class BlockService {
 
+    private final Database database;
     private final BlockRepository blockRepository;
 
     public BlockService(Database database) {
+        this.database = database;
         this.blockRepository = new BlockRepository(database);
     }
 
@@ -52,6 +55,21 @@ public class BlockService {
         );
     }
 
+    /**
+     * Insert block state with a phantom user attribution (e.g., #water, #fire).
+     * Phantom users are stored in the users table and represent natural events.
+     */
+    public void insertBlockStateWithPhantom(String phantomUser, String levelName, BlockPos pos, BlockState state, BlockAction blockAction) {
+        blockRepository.insertBlockStateWithPhantom(
+                System.currentTimeMillis(),
+                phantomUser,
+                levelName,
+                pos.getX(), pos.getY(), pos.getZ(),
+                state,
+                blockAction.getId()
+        );
+    }
+
     public List<IHistory> getBlockHistory(Level level, BlockPos pos) {
         return blockRepository.getBlockHistory(
                 level.dimension().location().toString(),
@@ -62,7 +80,11 @@ public class BlockService {
     }
 
     public void getBlockHistoryAsync(Level level, BlockPos pos, OnComplete<List<IHistory>> onComplete) {
-        ThreadManager.submit(() -> getBlockHistory(level, pos), onComplete);
+        ThreadManager.submit(() -> {
+            // Flush pending queues to ensure all recent changes are written to DB
+            database.flushQueues();
+            return getBlockHistory(level, pos);
+        }, onComplete);
     }
 
     public List<IHistory> getBlockHistory(Level level, List<BlockPos> pos) {
@@ -78,7 +100,11 @@ public class BlockService {
     }
 
     public void getBlockHistoryAsync(Level level, List<BlockPos> pos, OnComplete<List<IHistory>> onComplete) {
-        ThreadManager.submit(() -> getBlockHistory(level, pos), onComplete);
+        ThreadManager.submit(() -> {
+            // Flush pending queues to ensure all recent changes are written to DB
+            database.flushQueues();
+            return getBlockHistory(level, pos);
+        }, onComplete);
     }
 
     public List<IHistory> getInteractionHistory(Level level, BlockPos pos) {
@@ -103,7 +129,11 @@ public class BlockService {
     }
 
     public void getInteractionHistoryAsync(Level level, List<BlockPos> pos, OnComplete<List<IHistory>> onComplete) {
-        ThreadManager.submit(() -> getInteractionHistory(level, pos), onComplete);
+        ThreadManager.submit(() -> {
+            // Flush pending queues to ensure all recent changes are written to DB
+            database.flushQueues();
+            return getInteractionHistory(level, pos);
+        }, onComplete);
     }
 
     public void removeInteractionsForPosition(Level level, BlockPos secondPos) {

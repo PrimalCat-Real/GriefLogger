@@ -3,24 +3,40 @@ package com.daqem.grieflogger.command.filter;
 import com.daqem.grieflogger.GriefLogger;
 import com.daqem.grieflogger.model.BlockPosition;
 import com.mojang.brigadier.StringReader;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+/**
+ * Radius filter for lookup/rollback commands.
+ * Supports CoreProtect-style format:
+ * - r:10 - radius in blocks
+ * - r:#global - entire world (no radius limit)
+ * - r:c4 - radius in chunks (4 chunks = 64 blocks) [future]
+ */
 public class RadiusFilter implements IFilter {
 
+    private static final int GLOBAL_RADIUS = -1;
+    private static final List<Integer> COMMON_RADII = List.of(5, 10, 15, 20, 25, 50, 100);
+
     private final int radius;
+    private final boolean isGlobal;
     private BlockPosition position = new BlockPosition(0, 0, 0);
 
     public RadiusFilter() {
-        this(0);
+        this(0, false);
     }
 
     public RadiusFilter(int radius) {
+        this(radius, false);
+    }
+
+    public RadiusFilter(int radius, boolean isGlobal) {
         this.radius = radius;
+        this.isGlobal = isGlobal;
     }
 
     @Override
@@ -29,46 +45,117 @@ public class RadiusFilter implements IFilter {
     }
 
     @Override
-public List<String> getOptions() {
-    return IntStream.rangeClosed(1, 100)
-                    .mapToObj(Integer::toString)
-                    .collect(Collectors.toList());
-}
+    public List<String> getOptions() {
+        List<String> options = new java.util.ArrayList<>();
+        options.add("#global");
+        options.addAll(COMMON_RADII.stream().map(String::valueOf).toList());
+        return options;
+    }
 
     @Override
-    public IFilter parse(StringReader reader, String suffix) {
-        return new RadiusFilter(Integer.parseInt(suffix));
+    public String[] listSuggestions(SuggestionsBuilder builder, String prefix, String suffix) {
+        String suggestionPrefix = "r:";
+
+        if (suffix.isEmpty()) {
+            // Suggest common radii and #global
+            List<String> suggestions = new java.util.ArrayList<>();
+            suggestions.add(suggestionPrefix + "#global");
+            COMMON_RADII.forEach(r -> suggestions.add(suggestionPrefix + r));
+            return suggestions.toArray(String[]::new);
+        }
+
+        // If typing #, suggest #global
+        if (suffix.startsWith("#")) {
+            if ("#global".startsWith(suffix.toLowerCase())) {
+                return new String[]{suggestionPrefix + "#global"};
+            }
+            return new String[0];
+        }
+
+        // If typing a number, suggest completing it
+        if (suffix.chars().allMatch(Character::isDigit)) {
+            return COMMON_RADII.stream()
+                    .map(String::valueOf)
+                    .filter(s -> s.startsWith(suffix))
+                    .map(s -> suggestionPrefix + s)
+                    .toArray(String[]::new);
+        }
+
+        return new String[0];
+    }
+
+    @Override
+    public IFilter parse(StringReader reader, String suffix) throws CommandSyntaxException {
+        String lower = suffix.toLowerCase().trim();
+
+        // Check for #global
+        if (lower.equals("#global") || lower.equals("global")) {
+            return new RadiusFilter(GLOBAL_RADIUS, true);
+        }
+
+        // Check for chunk radius (c4 = 4 chunks)
+        if (lower.startsWith("c") && lower.length() > 1) {
+            try {
+                int chunks = Integer.parseInt(lower.substring(1));
+                return new RadiusFilter(chunks * 16, false);  // 1 chunk = 16 blocks
+            } catch (NumberFormatException e) {
+                throw CommandSyntaxException.BUILT_IN_EXCEPTIONS.readerInvalidInt()
+                        .createWithContext(reader, lower.substring(1));
+            }
+        }
+
+        // Regular block radius
+        try {
+            int radius = Integer.parseInt(lower);
+            if (radius < 0) {
+                throw CommandSyntaxException.BUILT_IN_EXCEPTIONS.readerInvalidInt()
+                        .createWithContext(reader, lower);
+            }
+            return new RadiusFilter(radius, false);
+        } catch (NumberFormatException e) {
+            throw CommandSyntaxException.BUILT_IN_EXCEPTIONS.readerInvalidInt()
+                    .createWithContext(reader, lower);
+        }
     }
 
     @Override
     public String toString() {
         return "RadiusFilter{" +
                 "radius=" + radius +
+                ", isGlobal=" + isGlobal +
                 '}';
     }
 
+    public int getRadius() {
+        return radius;
+    }
+
+    public boolean isGlobal() {
+        return isGlobal;
+    }
+
     public int getMinX() {
-        return position.x() - radius;
+        return isGlobal ? Integer.MIN_VALUE : position.x() - radius;
     }
 
     public int getMaxX() {
-        return position.x() + radius;
+        return isGlobal ? Integer.MAX_VALUE : position.x() + radius;
     }
 
     public int getMinY() {
-        return position.y() - radius;
+        return isGlobal ? Integer.MIN_VALUE : position.y() - radius;
     }
 
     public int getMaxY() {
-        return position.y() + radius;
+        return isGlobal ? Integer.MAX_VALUE : position.y() + radius;
     }
 
     public int getMinZ() {
-        return position.z() - radius;
+        return isGlobal ? Integer.MIN_VALUE : position.z() - radius;
     }
 
     public int getMaxZ() {
-        return position.z() + radius;
+        return isGlobal ? Integer.MAX_VALUE : position.z() + radius;
     }
 
     public void setPosition(BlockPosition position) {

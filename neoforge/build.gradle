@@ -31,6 +31,7 @@ repositories {
         name = 'NeoForged'
         url = 'https://maven.neoforged.net/releases'
     }
+    maven { url = "https://oss.sonatype.org/content/repositories/snapshots/" }
 }
 
 dependencies {
@@ -48,6 +49,16 @@ dependencies {
 //    shadowBundle "com.mysql:mysql-connector-j:8.4.0"
 
     modImplementation "curse.maven:supermartijn642s-config-lib-438332:${project.config_library_file_neoforge}"
+
+    // Kyori Adventure - provided by server (Mohist), not shadowed
+    compileOnly "net.kyori:adventure-api:${rootProject.kyori_version}"
+    compileOnly "net.kyori:adventure-text-minimessage:${rootProject.kyori_version}"
+    compileOnly "net.kyori:adventure-text-serializer-gson:${rootProject.kyori_version}"
+
+    // Create mod - optional integration for mixin support
+    compileOnly("com.simibubi.create:create-${rootProject.minecraft_version}:${rootProject.create_version}:slim") { transitive = false }
+    compileOnly("dev.engine-room.flywheel:flywheel-neoforge-api-${rootProject.minecraft_version}:${rootProject.flywheel_version}")
+    compileOnly("com.tterrag.registrate:Registrate:${rootProject.registrate_version}")
 }
 
 processResources {
@@ -65,6 +76,9 @@ processResources {
 shadowJar {
     exclude "architectury.common.json"
     exclude "org/slf4j/**"
+    // Exclude Gson - already provided by Minecraft
+    exclude "com/google/gson/**"
+    exclude "META-INF/maven/com.google.code.gson/**"
 
     configurations = [project.configurations.shadowBundle]
     archiveClassifier = "neoforge-dev-shadow"

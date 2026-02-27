@@ -93,6 +93,50 @@ public class ContainerRepository extends Repository {
         }
     }
 
+    /**
+     * Insert container transaction with phantom user (automated transfer).
+     * Phantom user is used as both UUID and name.
+     */
+    public void insertWithPhantom(long time, String phantomUser, Level level, int x, int y, int z, SimpleItemStack item, int itemAction) {
+        if (item.isEmpty()) {
+            return;
+        }
+
+        ResourceLocation itemLocation = item.getItem().arch$registryName();
+        if (itemLocation != null) {
+            String materialName = itemLocation.toString().replace("minecraft:", "");
+
+            // Insert material
+            Query.insert("materials")
+                    .value("name", materialName)
+                    .ignore()
+                    .queue(database);
+
+            // Insert container with phantom user
+            String insertQuery = """
+                    INSERT INTO containers(time, user, level, x, y, z, type, data, amount, action)
+                    VALUES(?, (SELECT id FROM users WHERE uuid = ?), (SELECT id FROM levels WHERE name = ?),
+                    ?, ?, ?, (SELECT id FROM materials WHERE name = ?), ?, ?, ?)""";
+
+            try {
+                PreparedStatement stmt = database.prepareStatement(insertQuery);
+                stmt.setLong(1, time);
+                stmt.setString(2, phantomUser);  // Phantom user as UUID
+                stmt.setString(3, level.dimension().location().toString());
+                stmt.setInt(4, x);
+                stmt.setInt(5, y);
+                stmt.setInt(6, z);
+                stmt.setString(7, materialName);
+                stmt.setBytes(8, item.getTagBytes(level));
+                stmt.setInt(9, item.getCount());
+                stmt.setInt(10, itemAction);
+                database.queue.add(stmt);
+            } catch (SQLException e) {
+                GriefLogger.LOGGER.error("Failed to insert container with phantom user", e);
+            }
+        }
+    }
+
     public void insertList(long time, String userUuid, Level level, int x, int y, int z, List<SimpleItemStack> items, int itemAction) {
         String insertQuery = """
                 INSERT INTO containers(time, user, level, x, y, z, type, data, amount, action)

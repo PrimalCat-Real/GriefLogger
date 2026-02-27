@@ -50,6 +50,18 @@ public class UserRepository extends Repository {
                 .queue(database);
     }
 
+    /**
+     * Insert a phantom user (automated source like #chute, #hopper).
+     * Uses phantom name as both UUID and name for easy identification.
+     */
+    public void insertPhantomUser(String phantomName) {
+        Query.insert("users")
+                .value("uuid", phantomName)
+                .value("name", phantomName)
+                .ignore()
+                .queue(database);
+    }
+
     public Map<Integer, String> getAllUsernames() {
         Map<Integer, String> usernames = new HashMap<>();
         Query.select("users")

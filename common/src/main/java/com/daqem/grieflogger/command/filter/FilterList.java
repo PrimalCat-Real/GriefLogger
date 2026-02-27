@@ -20,6 +20,18 @@ public class FilterList {
     private @Nullable TimeFilter timeFilter;
     private @Nullable UserFilter userFilter;
 
+    // Flags
+    private boolean countOnly = false;
+    private boolean preview = false;
+    private boolean verbose = false;
+    private boolean container = false;
+
+    /**
+     * Create an empty filter list (for programmatic construction)
+     */
+    public FilterList() {
+    }
+
     public FilterList(List<IFilter> filters, CommandSourceStack source) {
         Map<Class<? extends IFilter>, IFilter> filterMap = filters.stream()
                 .collect(Collectors.toMap(IFilter::getClass, Function.identity(), (a, b) -> b));
@@ -30,6 +42,17 @@ public class FilterList {
         radiusFilter = (RadiusFilter) filterMap.get(RadiusFilter.class);
         timeFilter = (TimeFilter) filterMap.get(TimeFilter.class);
         userFilter = (UserFilter) filterMap.get(UserFilter.class);
+
+        // Process flags
+        filters.stream()
+                .filter(f -> f instanceof FlagsFilter)
+                .map(f -> (FlagsFilter) f)
+                .forEach(flagsFilter -> {
+                    if (flagsFilter.isCount()) this.countOnly = true;
+                    if (flagsFilter.isPreview()) this.preview = true;
+                    if (flagsFilter.isVerbose()) this.verbose = true;
+                    if (flagsFilter.isContainer()) this.container = true;
+                });
 
         if (radiusFilter != null) {
             radiusFilter.setPosition(new BlockPosition((int) source.getPosition().x(), (int) source.getPosition().y(), (int) source.getPosition().z()));
@@ -144,5 +167,41 @@ public class FilterList {
 
     public void setUserFilter(@Nullable UserFilter userFilter) {
         this.userFilter = userFilter;
+    }
+
+    // ============================================
+    // FLAGS
+    // ============================================
+
+    public boolean isCountOnly() {
+        return countOnly;
+    }
+
+    public void setCountOnly(boolean countOnly) {
+        this.countOnly = countOnly;
+    }
+
+    public boolean isPreview() {
+        return preview;
+    }
+
+    public void setPreview(boolean preview) {
+        this.preview = preview;
+    }
+
+    public boolean isVerbose() {
+        return verbose;
+    }
+
+    public void setVerbose(boolean verbose) {
+        this.verbose = verbose;
+    }
+
+    public boolean isContainer() {
+        return container;
+    }
+
+    public void setContainer(boolean container) {
+        this.container = container;
     }
 }

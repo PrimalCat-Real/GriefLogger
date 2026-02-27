@@ -1,6 +1,7 @@
 package com.daqem.grieflogger.model;
 
 import com.daqem.grieflogger.GriefLogger;
+import com.daqem.grieflogger.util.Theme;
 import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.Nullable;
 
@@ -25,7 +26,27 @@ public class User {
         return Optional.ofNullable(uuid);
     }
 
+    /**
+     * Returns true if this is a phantom user (e.g., #chute, #hopper).
+     */
+    public boolean isPhantom() {
+        return name != null && name.startsWith("#");
+    }
+
     public Component getNameComponent() {
+        if (isPhantom() && name.contains("@")) {
+            // Parse phantom user with coordinates: #chute@x,y,z -> chute (x, y, z)
+            String[] parts = name.substring(1).split("@", 2);
+            String phantomType = parts[0];
+            String coords = parts[1].replace(",", ", ");
+            return Theme.toMinecraft(
+                    Theme.accent(phantomType)
+                            .append(Theme.muted(" (" + coords + ")"))
+            );
+        } else if (isPhantom()) {
+            // Simple phantom user without coordinates: #hopper -> hopper
+            return Theme.toMinecraft(Theme.accent(name.substring(1)));
+        }
         return GriefLogger.themedLiteral(name);
     }
 }

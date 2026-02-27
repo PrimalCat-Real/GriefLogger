@@ -1,8 +1,10 @@
 package com.daqem.grieflogger.block.container;
 
+import com.daqem.grieflogger.GriefLogger;
 import com.daqem.grieflogger.database.service.Services;
 import com.daqem.grieflogger.model.SimpleItemStack;
 import com.daqem.grieflogger.model.action.ItemAction;
+import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -16,65 +18,129 @@ import java.util.Map;
 public class ContainersTransactionManager implements IContainerTransactionManager {
 
     private final List<BaseContainerBlockEntity> blockEntities;
-
-    private final Map<BaseContainerBlockEntity, List<SimpleItemStack>> initialItems = new HashMap<>();
-    private final Map<BaseContainerBlockEntity, List<SimpleItemStack>> finalItems = new HashMap<>();
+    private final Map<BaseContainerBlockEntity, List<SimpleItemStack>> lastKnownState = new HashMap<>();
+    private int tickCounter = 0;
+    private static final int TICK_INTERVAL = 1; // Check every tick for real-time tracking
 
     public ContainersTransactionManager(List<BaseContainerBlockEntity> blockEntities) {
         this.blockEntities = blockEntities;
         for (BaseContainerBlockEntity blockEntity : blockEntities) {
-            initialItems.put(blockEntity, new ArrayList<>());
-            finalItems.put(blockEntity, new ArrayList<>());
-            for (int i = 0; i < blockEntity.getContainerSize(); i++) {
-                addItem(blockEntity.getItem(i), initialItems.get(blockEntity));
+            List<SimpleItemStack> state = new ArrayList<>();
+            captureState(blockEntity, state);
+            lastKnownState.put(blockEntity, state);
+        }
+    }
+
+    @Override
+    public void tick(ServerPlayer serverPlayer) {
+        tickCounter++;
+        if (tickCounter < TICK_INTERVAL) {
+            return;
+        }
+        tickCounter = 0;
+
+        for (BaseContainerBlockEntity blockEntity : blockEntities) {
+            List<SimpleItemStack> currentState = new ArrayList<>();
+            captureState(blockEntity, currentState);
+
+            List<SimpleItemStack> oldState = lastKnownState.get(blockEntity);
+            List<SimpleItemStack> removedItems = getDifference(oldState, currentState);
+            List<SimpleItemStack> addedItems = getDifference(currentState, oldState);
+
+            // Check if there was recent automated activity on this container
+            BlockPos containerPos = blockEntity.getBlockPos();
+            boolean hasAutomatedActivity = AutomatedTransferTracker.getInstance().hasRecentAutomatedActivity(containerPos);
+
+            if (!hasAutomatedActivity && (!removedItems.isEmpty() || !addedItems.isEmpty())) {
+                // Log changes (only if no automated activity)
+                for (SimpleItemStack item : removedItems) {
+                    GriefLogger.LOGGER.info("[Container] Action=REMOVE User={} Item={}x{} Pos={}",
+                            serverPlayer.getName().getString(),
+                            item.getItem().arch$registryName(), item.getCount(),
+                            blockEntity.getBlockPos().toShortString());
+                }
+                for (SimpleItemStack item : addedItems) {
+                    GriefLogger.LOGGER.info("[Container] Action=ADD User={} Item={}x{} Pos={}",
+                            serverPlayer.getName().getString(),
+                            item.getItem().arch$registryName(), item.getCount(),
+                            blockEntity.getBlockPos().toShortString());
+                }
+
+                Services.CONTAINER.insertMap(
+                        serverPlayer.getUUID(),
+                        blockEntity.getLevel() != null ? blockEntity.getLevel() : serverPlayer.level(),
+                        blockEntity.getBlockPos(),
+                        Map.of(
+                                ItemAction.REMOVE_ITEM, removedItems,
+                                ItemAction.ADD_ITEM, addedItems
+                        )
+                );
+            }
+
+            // ALWAYS update last known state, even if we skipped logging
+            if (!removedItems.isEmpty() || !addedItems.isEmpty()) {
+                lastKnownState.put(blockEntity, currentState);
             }
         }
     }
 
+    @Override
     public void finalize(ServerPlayer serverPlayer) {
         for (BaseContainerBlockEntity blockEntity : blockEntities) {
-            constructFinalItems(blockEntity);
+            List<SimpleItemStack> currentState = new ArrayList<>();
+            captureState(blockEntity, currentState);
 
-            List<SimpleItemStack> removedItems = getRemovedItems(blockEntity);
-            List<SimpleItemStack> addedItems = getAddedItems(blockEntity);
+            List<SimpleItemStack> oldState = lastKnownState.get(blockEntity);
+            List<SimpleItemStack> removedItems = getDifference(oldState, currentState);
+            List<SimpleItemStack> addedItems = getDifference(currentState, oldState);
 
-            Services.CONTAINER.insertMap(
-                    serverPlayer.getUUID(),
-                    blockEntity.getLevel() != null ? blockEntity.getLevel() : serverPlayer.level(),
-                    blockEntity.getBlockPos(),
-                    Map.of(
-                            ItemAction.REMOVE_ITEM, removedItems,
-                            ItemAction.ADD_ITEM, addedItems
-                    )
-            );
-        }
+            // Check if there was recent automated activity on this container
+            BlockPos containerPos = blockEntity.getBlockPos();
+            boolean hasAutomatedActivity = AutomatedTransferTracker.getInstance().hasRecentAutomatedActivity(containerPos);
 
-    }
-
-    private void constructFinalItems(BaseContainerBlockEntity blockEntity) {
-        for (int i = 0; i < blockEntity.getContainerSize(); i++) {
-            addItem(blockEntity.getItem(i), finalItems.get(blockEntity));
-        }
-    }
-
-    private List<SimpleItemStack> getRemovedItems(BaseContainerBlockEntity blockEntity) {
-        return new ArrayList<>(getDifference(initialItems.get(blockEntity), finalItems.get(blockEntity)));
-    }
-
-    private List<SimpleItemStack> getDifference(List<SimpleItemStack> x, List<SimpleItemStack> y) {
-        List<SimpleItemStack> difference = new ArrayList<>();
-        for (SimpleItemStack xItem : x) {
-            y.stream().filter(xItem::equals).findFirst().ifPresentOrElse(yItem -> {
-                if (yItem.getCount() < xItem.getCount()) {
-                    difference.add(new SimpleItemStack(xItem.getItem(), xItem.getCount() - yItem.getCount(), xItem.getTag()));
+            if (!hasAutomatedActivity && (!removedItems.isEmpty() || !addedItems.isEmpty())) {
+                for (SimpleItemStack item : removedItems) {
+                    GriefLogger.LOGGER.info("[Container] Action=REMOVE User={} Item={}x{} Pos={}",
+                            serverPlayer.getName().getString(),
+                            item.getItem().arch$registryName(), item.getCount(),
+                            blockEntity.getBlockPos().toShortString());
                 }
-            }, () -> difference.add(xItem));
+                for (SimpleItemStack item : addedItems) {
+                    GriefLogger.LOGGER.info("[Container] Action=ADD User={} Item={}x{} Pos={}",
+                            serverPlayer.getName().getString(),
+                            item.getItem().arch$registryName(), item.getCount(),
+                            blockEntity.getBlockPos().toShortString());
+                }
+
+                Services.CONTAINER.insertMap(
+                        serverPlayer.getUUID(),
+                        blockEntity.getLevel() != null ? blockEntity.getLevel() : serverPlayer.level(),
+                        blockEntity.getBlockPos(),
+                        Map.of(
+                                ItemAction.REMOVE_ITEM, removedItems,
+                                ItemAction.ADD_ITEM, addedItems
+                        )
+                );
+            }
+        }
+    }
+
+    private void captureState(BaseContainerBlockEntity blockEntity, List<SimpleItemStack> stateList) {
+        for (int i = 0; i < blockEntity.getContainerSize(); i++) {
+            addItem(blockEntity.getItem(i), stateList);
+        }
+    }
+
+    private List<SimpleItemStack> getDifference(List<SimpleItemStack> from, List<SimpleItemStack> to) {
+        List<SimpleItemStack> difference = new ArrayList<>();
+        for (SimpleItemStack fromItem : from) {
+            to.stream().filter(fromItem::equals).findFirst().ifPresentOrElse(toItem -> {
+                if (toItem.getCount() < fromItem.getCount()) {
+                    difference.add(new SimpleItemStack(fromItem.getItem(), fromItem.getCount() - toItem.getCount(), fromItem.getTag()));
+                }
+            }, () -> difference.add(new SimpleItemStack(fromItem.getItem(), fromItem.getCount(), fromItem.getTag())));
         }
         return difference;
-    }
-
-    private List<SimpleItemStack> getAddedItems(BaseContainerBlockEntity blockEntity) {
-        return new ArrayList<>(getDifference(finalItems.get(blockEntity), initialItems.get(blockEntity)));
     }
 
     private void addItem(ItemStack itemStack, List<SimpleItemStack> itemStackList) {

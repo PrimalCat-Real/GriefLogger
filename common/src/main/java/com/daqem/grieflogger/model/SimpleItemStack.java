@@ -46,7 +46,8 @@ public class SimpleItemStack {
 
     @Override
     public int hashCode() {
-        return Objects.hash(item, count, tag);
+        // Must match equals() - does not include count
+        return Objects.hash(item, tag);
     }
 
     public Item getItem() {
@@ -62,11 +63,11 @@ public class SimpleItemStack {
     }
 
     public boolean hasTag() {
-        return tag != null;
+        return tag != null && !tag.isEmpty();
     }
 
     public boolean hasNoTag() {
-        return tag == null;
+        return tag == null || tag.isEmpty();
     }
 
     public void setCount(int count) {

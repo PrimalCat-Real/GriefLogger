@@ -35,6 +35,10 @@ subprojects {
                 includeGroup "curse.maven"
             }
         }
+        // Create mod dependencies
+        maven { url = "https://maven.createmod.net" }
+        maven { url = "https://maven.ithundxr.dev/snapshots" }
+        maven { url = "https://maven.tterrag.com/" }
     }
 
     dependencies {

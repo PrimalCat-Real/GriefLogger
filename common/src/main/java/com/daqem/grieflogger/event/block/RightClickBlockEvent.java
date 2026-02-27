@@ -71,6 +71,9 @@ public class RightClickBlockEvent extends AbstractEvent {
                             }
                             return InspectContainerEvent.inspectContainer(serverPlayer, level, pos);
                         }
+                        // For non-container BlockEntities (e.g., Create chutes, hoppers from mods)
+                        // check if there's container history for this position
+                        return InspectContainerEvent.inspectContainer(serverPlayer, level, pos);
                     }
                     return InspectBlockEvent.inspectBlock(serverPlayer, pos.relative(direction));
                 }

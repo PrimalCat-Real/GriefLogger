@@ -35,7 +35,6 @@ public class User {
 
     public Component getNameComponent() {
         if (isPhantom() && name.contains("@")) {
-            // Parse phantom user with coordinates: #chute@x,y,z -> chute (x, y, z)
             String[] parts = name.substring(1).split("@", 2);
             String phantomType = parts[0];
             String coords = parts[1].replace(",", ", ");
@@ -44,7 +43,6 @@ public class User {
                             .append(Theme.muted(" (" + coords + ")"))
             );
         } else if (isPhantom()) {
-            // Simple phantom user without coordinates: #hopper -> hopper
             return Theme.toMinecraft(Theme.accent(name.substring(1)));
         }
         return GriefLogger.themedLiteral(name);

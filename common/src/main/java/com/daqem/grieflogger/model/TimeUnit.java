@@ -61,7 +61,6 @@ public enum TimeUnit {
 
         String lower = abbreviation.toLowerCase();
 
-        // Special case: "mo" for months (must check before "m")
         if (lower.equals("mo")) {
             return MONTH;
         }
@@ -88,13 +87,10 @@ public enum TimeUnit {
 
         String lower = input.toLowerCase().trim();
 
-        // Check for time range (e.g., "1w-1d")
         int dashIndex = lower.indexOf('-');
         if (dashIndex > 0 && dashIndex < lower.length() - 1) {
-            // Check if this is actually a range and not a negative number
             char beforeDash = lower.charAt(dashIndex - 1);
             if (!Character.isDigit(beforeDash)) {
-                // It's part of a number, not a range
                 dashIndex = -1;
             }
         }
@@ -108,7 +104,6 @@ public enum TimeUnit {
 
             long now = System.currentTimeMillis();
 
-            // Larger offset = further in the past = earlier time
             if (startOffset >= endOffset) {
                 return new long[]{now - startOffset, now - endOffset};
             } else {
@@ -116,7 +111,6 @@ public enum TimeUnit {
             }
         }
 
-        // Single time value
         long offset = parseSingleTime(lower);
         return new long[]{System.currentTimeMillis() - offset, 0};
     }
@@ -132,20 +126,17 @@ public enum TimeUnit {
         long totalMillis = 0;
         StringBuilder numberBuffer = new StringBuilder();
 
-        // Process character by character
         for (int i = 0; i < input.length(); i++) {
             char c = input.charAt(i);
 
             if (Character.isDigit(c) || c == '.') {
                 numberBuffer.append(c);
             } else {
-                // Found a letter - determine the unit
                 String unitStr = String.valueOf(c);
 
-                // Check for "mo" (months)
                 if (c == 'm' && i + 1 < input.length() && input.charAt(i + 1) == 'o') {
                     unitStr = "mo";
-                    i++; // Skip the 'o'
+                    i++; 
                 }
 
                 if (numberBuffer.length() > 0) {
@@ -156,7 +147,6 @@ public enum TimeUnit {
                             totalMillis += (long) (value * unit.getMilliseconds());
                         }
                     } catch (NumberFormatException ignored) {
-                        // Invalid number, skip
                     }
                     numberBuffer.setLength(0);
                 }

@@ -20,6 +20,7 @@ public interface Services {
     SessionService SESSION = new SessionService(GriefLogger.getDatabase());
     UsernameService USERNAME = new UsernameService(GriefLogger.getDatabase());
     UserService USER = new UserService(GriefLogger.getDatabase());
+    ChunkBackupService CHUNK_BACKUP = new ChunkBackupService(GriefLogger.getDatabase());
 
     /**
      * Purge all data older than the specified cutoff time.

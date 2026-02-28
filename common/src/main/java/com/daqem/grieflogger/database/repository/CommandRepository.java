@@ -32,7 +32,6 @@ public class CommandRepository extends Repository {
     }
 
     public void createIndexes() {
-        // Indexes are now created in createTable via SchemaBuilder
     }
 
     public void insert(long time, String userUuid, String levelName, int x, int y, int z, String command) {

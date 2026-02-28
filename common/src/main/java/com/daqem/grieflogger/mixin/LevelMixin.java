@@ -67,10 +67,4 @@ public class LevelMixin {
 
     }
 
-    // TODO: FIX THIS SIGNATURE
-//    @Inject(method = "markAndNotifyBlock", at = @At("HEAD"))
-//    private void onMarkAndNotifyBlock(BlockPos pos, LevelChunk levelChunk, BlockState oldState, BlockState newState, int flags, int recursion, CallbackInfo ci) {
-//        Level level = (Level)(Object)this;
-//        if (!(level instanceof ServerLevel serverLevel)) return;
-//    }
 }

@@ -34,7 +34,6 @@ public class BreakBlockEvent extends AbstractEvent {
                     RemoveBlockInteractionsEvent.removeBlockInteractions(level, pos);
                 }
             }
-            // Log container contents when breaking a container block
             if (state.hasBlockEntity()) {
                 BlockEntity blockEntity = level.getBlockEntity(pos);
                 ContainerHandler.getContainer(blockEntity).ifPresent(container ->

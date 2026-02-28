@@ -32,11 +32,9 @@ public class ChatRepository extends Repository {
     }
 
     public void createIndexes() {
-        // Indexes are now created in createTable via SchemaBuilder
     }
 
     public void insert(long time, String userUuid, String levelName, int x, int y, int z, String message) {
-        // Subqueries for user/level need raw SQL
         Dialect dialect = Dialect.current();
         String query = dialect.insertIgnore() + """
                  INTO chats(time, user, level, x, y, z, message)

@@ -59,7 +59,6 @@ public class LookupCommand implements ICommand {
                     return;
                 }
 
-                // Handle #count flag - only show count, not results
                 if (filterList.isCountOnly()) {
                     int count = filteredHistory.size();
                     player.sendSystemMessage(Theme.toMinecraft(
@@ -81,7 +80,6 @@ public class LookupCommand implements ICommand {
     }
 
     private static List<IHistory> getHistory(Level level, FilterList filterList) {
-        // Flush pending queues to ensure all recent changes are written to DB
         GriefLogger.getDatabase().flushQueues();
 
         List<SessionHistory> filteredSessionHistory = Services.SESSION.getFilteredSessionHistory(level, filterList);

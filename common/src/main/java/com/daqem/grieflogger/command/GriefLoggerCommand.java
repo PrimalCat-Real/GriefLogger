@@ -19,10 +19,13 @@ public class GriefLoggerCommand {
     private static final ICommand APPLY = new ApplyCommand();
     private static final ICommand CANCEL = new CancelCommand();
     private static final ICommand PURGE = new PurgeCommand();
+    private static final ICommand CHUNK_BACKUP = new ChunkBackupCommand();
+    private static final ICommand CHUNK_LIST = new ChunkListCommand();
 
     public static void registerCommand(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(commandWithPrefix("grieflogger"));
         dispatcher.register(commandWithPrefix("gl"));
+        dispatcher.register(commandWithPrefix("co"));
     }
 
     private static LiteralArgumentBuilder<CommandSourceStack> commandWithPrefix(String prefix) {
@@ -39,6 +42,8 @@ public class GriefLoggerCommand {
                 .then(TELEPORT.getTeleportAlias())
                 .then(APPLY.getCommand())
                 .then(CANCEL.getCommand())
-                .then(PURGE.getCommand());
+                .then(PURGE.getCommand())
+                .then(CHUNK_BACKUP.getCommand())
+                .then(CHUNK_LIST.getCommand());
     }
 }

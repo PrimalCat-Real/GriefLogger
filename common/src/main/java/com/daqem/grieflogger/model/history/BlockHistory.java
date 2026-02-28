@@ -11,6 +11,7 @@ import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Items;
+import com.daqem.grieflogger.util.Theme;
 
 import java.util.UUID;
 
@@ -26,7 +27,7 @@ public class BlockHistory extends History {
 
     private static UUID parseUuidOrNull(String uuid) {
         if (uuid == null || uuid.startsWith("#")) {
-            return null; // Phantom user (e.g., #explosion, #piston, #water)
+            return null; 
         }
         try {
             return UUID.fromString(uuid);
@@ -44,11 +45,15 @@ public class BlockHistory extends History {
 
     @Override
     public Component getComponent() {
-        return getTime().getFormattedTimeAgo().append(" ")
-                .append(getAction().getPrefix()).append(" ")
-                .append(getUser().getNameComponent()).append(" ")
-                .append(getAction().getPastTense()).append(" ")
-                .append(getMaterialComponent());
+        return Theme.toMinecraft(
+                Theme.muted("") // Base for easy appending
+        ).copy().append(Theme.toMinecraft(Theme.fromMinecraft(getTime().getFormattedTimeAgo()).color(Theme.MUTED)))
+         .append(Theme.toMinecraft(Theme.muted(" - ")))
+         .append(Theme.toMinecraft(Theme.primary(getUser().getName())))
+         .append(Theme.toMinecraft(Theme.secondary(" ")))
+         .append(Theme.toMinecraft(Theme.fromMinecraft(getAction().getPastTense()).color(Theme.SECONDARY)))
+         .append(Theme.toMinecraft(Theme.secondary(" ")))
+         .append(getMaterialComponent());
     }
 
     public Component getMaterialComponent() {

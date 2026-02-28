@@ -12,4 +12,14 @@ public class GriefLoggerExpectPlatformImpl {
     public static Path getConfigDirectory() {
         return FabricLoader.getInstance().getConfigDir();
     }
+
+    public static int insertItem(net.minecraft.server.level.ServerLevel level, net.minecraft.core.BlockPos pos, net.minecraft.world.item.ItemStack stack) {
+        // Not implemented on Fabric for now, return full count to fallback to default logic
+        return stack.getCount();
+    }
+
+    public static int extractItem(net.minecraft.server.level.ServerLevel level, net.minecraft.core.BlockPos pos, net.minecraft.world.item.ItemStack stack) {
+        // Not implemented on Fabric for now, return 0 to fallback to default logic
+        return 0;
+    }
 }

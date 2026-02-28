@@ -83,7 +83,6 @@ public class Database {
         }
         Path path = ConfigLib.getConfigFolder().toPath().resolve(GriefLogger.MOD_ID);
         if (!path.toFile().exists()) {
-            //noinspection ResultOfMethodCallIgnored
             path.toFile().mkdirs();
         }
         try {
@@ -104,21 +103,14 @@ public class Database {
         if (connection == null) return;
 
         try (Statement pragmaStatement = connection.createStatement()) {
-            // WAL mode: Write-Ahead Logging for better concurrency
             pragmaStatement.execute("PRAGMA journal_mode=WAL;");
 
-            // NORMAL synchronous: Good balance between safety and speed
-            // FULL is safest but slower, OFF is fastest but risky
             pragmaStatement.execute("PRAGMA synchronous=NORMAL;");
 
-            // Increase cache size (negative = KB, positive = pages)
-            // 10000 pages * 4KB = ~40MB cache
             pragmaStatement.execute("PRAGMA cache_size=10000;");
 
-            // Memory-mapped I/O size (256MB)
             pragmaStatement.execute("PRAGMA mmap_size=268435456;");
 
-            // Temporary tables in memory
             pragmaStatement.execute("PRAGMA temp_store=MEMORY;");
 
             GriefLogger.LOGGER.info("SQLite WAL mode enabled with performance optimizations");
@@ -186,9 +178,9 @@ public class Database {
 
                 try (statement) {
                     if (isBatch) {
-                        statement.executeBatch(); // Execute as a batch
+                        statement.executeBatch(); 
                     } else {
-                        statement.executeUpdate(); // Execute individually
+                        statement.executeUpdate(); 
                     }
                 }
             }
@@ -228,7 +220,7 @@ public class Database {
     public boolean isConnected() {
         if (connection == null) return false;
         try {
-            return connection.isValid(5);  // 5 second timeout
+            return connection.isValid(5);  
         } catch (SQLException e) {
             return false;
         }

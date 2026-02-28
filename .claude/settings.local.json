@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:modrinth.com)",
+      "WebFetch(domain:github.com)",
+      "Bash(./gradlew common:compileJava:*)",
+      "Bash(./gradlew build:*)",
+      "Bash(./gradlew clean build:*)",
+      "Bash(./gradlew neoforge:build:*)",
+      "WebFetch(domain:raw.githubusercontent.com)"
+    ]
+  }
+}

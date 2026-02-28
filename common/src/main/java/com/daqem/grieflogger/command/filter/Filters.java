@@ -20,38 +20,31 @@ public interface Filters {
      * Maps alternative prefixes to their canonical filter
      */
     Map<String, IFilter> ALIASES = Map.ofEntries(
-            // User aliases
             Map.entry("u", USER),
             Map.entry("user", USER),
             Map.entry("users", USER),
-            Map.entry("p", USER),  // CoreProtect uses p: for player
+            Map.entry("p", USER),  
 
-            // Time aliases
             Map.entry("t", TIME),
             Map.entry("time", TIME),
 
-            // Radius aliases
             Map.entry("r", RADIUS),
             Map.entry("radius", RADIUS),
 
-            // Action aliases
             Map.entry("a", ACTION),
             Map.entry("action", ACTION),
 
-            // Include aliases
             Map.entry("i", INCLUDE),
             Map.entry("include", INCLUDE),
             Map.entry("item", INCLUDE),
             Map.entry("items", INCLUDE),
-            Map.entry("b", INCLUDE),  // block
+            Map.entry("b", INCLUDE),  
             Map.entry("block", INCLUDE),
             Map.entry("blocks", INCLUDE),
 
-            // Exclude aliases
             Map.entry("e", EXCLUDE),
             Map.entry("exclude", EXCLUDE),
 
-            // Flags (f:count, f:preview, f:verbose, f:container)
             Map.entry("f", FLAGS),
             Map.entry("flag", FLAGS),
             Map.entry("flags", FLAGS)
@@ -68,13 +61,11 @@ public interface Filters {
 
         String lowerPrefix = prefix.toLowerCase();
 
-        // First check aliases map
         IFilter aliasMatch = ALIASES.get(lowerPrefix);
         if (aliasMatch != null) {
             return aliasMatch;
         }
 
-        // Fallback: check single character prefix
         if (prefix.length() == 1) {
             return FILTERS.stream()
                     .filter(x -> x.getPrefix() == Character.toLowerCase(prefix.charAt(0)))
@@ -82,7 +73,6 @@ public interface Filters {
                     .orElse(null);
         }
 
-        // Fallback: partial name match
         return FILTERS.stream()
                 .filter(x -> x.getName().toLowerCase().startsWith(lowerPrefix))
                 .findFirst()

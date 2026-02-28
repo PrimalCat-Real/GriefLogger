@@ -20,7 +20,7 @@ public class ContainersTransactionManager implements IContainerTransactionManage
     private final List<BaseContainerBlockEntity> blockEntities;
     private final Map<BaseContainerBlockEntity, List<SimpleItemStack>> lastKnownState = new HashMap<>();
     private int tickCounter = 0;
-    private static final int TICK_INTERVAL = 1; // Check every tick for real-time tracking
+    private static final int TICK_INTERVAL = 1; 
 
     public ContainersTransactionManager(List<BaseContainerBlockEntity> blockEntities) {
         this.blockEntities = blockEntities;
@@ -47,12 +47,10 @@ public class ContainersTransactionManager implements IContainerTransactionManage
             List<SimpleItemStack> removedItems = getDifference(oldState, currentState);
             List<SimpleItemStack> addedItems = getDifference(currentState, oldState);
 
-            // Check if there was recent automated activity on this container
             BlockPos containerPos = blockEntity.getBlockPos();
             boolean hasAutomatedActivity = AutomatedTransferTracker.getInstance().hasRecentAutomatedActivity(containerPos);
 
             if (!hasAutomatedActivity && (!removedItems.isEmpty() || !addedItems.isEmpty())) {
-                // Log changes (only if no automated activity)
                 for (SimpleItemStack item : removedItems) {
                     GriefLogger.LOGGER.info("[Container] Action=REMOVE User={} Item={}x{} Pos={}",
                             serverPlayer.getName().getString(),
@@ -77,7 +75,6 @@ public class ContainersTransactionManager implements IContainerTransactionManage
                 );
             }
 
-            // ALWAYS update last known state, even if we skipped logging
             if (!removedItems.isEmpty() || !addedItems.isEmpty()) {
                 lastKnownState.put(blockEntity, currentState);
             }
@@ -94,7 +91,6 @@ public class ContainersTransactionManager implements IContainerTransactionManage
             List<SimpleItemStack> removedItems = getDifference(oldState, currentState);
             List<SimpleItemStack> addedItems = getDifference(currentState, oldState);
 
-            // Check if there was recent automated activity on this container
             BlockPos containerPos = blockEntity.getBlockPos();
             boolean hasAutomatedActivity = AutomatedTransferTracker.getInstance().hasRecentAutomatedActivity(containerPos);
 

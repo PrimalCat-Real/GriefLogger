@@ -20,7 +20,6 @@ public class ActionFilter implements IFilter {
     private static final Map<String, List<IAction>> ACTION_ALIASES = new LinkedHashMap<>();
 
     static {
-        // Block actions
         ACTION_ALIASES.put("block", List.of(BlockAction.BREAK_BLOCK, BlockAction.PLACE_BLOCK));
         ACTION_ALIASES.put("blocks", List.of(BlockAction.BREAK_BLOCK, BlockAction.PLACE_BLOCK));
         ACTION_ALIASES.put("+block", List.of(BlockAction.PLACE_BLOCK));
@@ -31,21 +30,17 @@ public class ActionFilter implements IFilter {
         ACTION_ALIASES.put("broke", List.of(BlockAction.BREAK_BLOCK));
         ACTION_ALIASES.put("remove", List.of(BlockAction.BREAK_BLOCK));
 
-        // Interact
         ACTION_ALIASES.put("click", List.of(BlockAction.INTERACT_BLOCK));
         ACTION_ALIASES.put("interact", List.of(BlockAction.INTERACT_BLOCK));
 
-        // Kill/entity
         ACTION_ALIASES.put("kill", List.of(BlockAction.KILL_ENTITY));
         ACTION_ALIASES.put("death", List.of(BlockAction.KILL_ENTITY));
 
-        // Container actions
         ACTION_ALIASES.put("container", List.of(ItemAction.REMOVE_ITEM, ItemAction.ADD_ITEM));
         ACTION_ALIASES.put("+container", List.of(ItemAction.ADD_ITEM));
         ACTION_ALIASES.put("-container", List.of(ItemAction.REMOVE_ITEM));
         ACTION_ALIASES.put("chest", List.of(ItemAction.REMOVE_ITEM, ItemAction.ADD_ITEM));
 
-        // Item actions (drop/pickup)
         ACTION_ALIASES.put("item", List.of(ItemAction.DROP_ITEM, ItemAction.PICKUP_ITEM));
         ACTION_ALIASES.put("items", List.of(ItemAction.DROP_ITEM, ItemAction.PICKUP_ITEM));
         ACTION_ALIASES.put("+item", List.of(ItemAction.PICKUP_ITEM));
@@ -53,7 +48,6 @@ public class ActionFilter implements IFilter {
         ACTION_ALIASES.put("drop", List.of(ItemAction.DROP_ITEM));
         ACTION_ALIASES.put("pickup", List.of(ItemAction.PICKUP_ITEM));
 
-        // Session actions
         ACTION_ALIASES.put("session", List.of(SessionAction.JOIN, SessionAction.QUIT));
         ACTION_ALIASES.put("+session", List.of(SessionAction.JOIN));
         ACTION_ALIASES.put("-session", List.of(SessionAction.QUIT));
@@ -104,7 +98,6 @@ public class ActionFilter implements IFilter {
                     .toArray(String[]::new);
         }
 
-        // Filter options that start with the typed suffix
         return SUGGESTION_OPTIONS.stream()
                 .filter(s -> s.toLowerCase().startsWith(suffix.toLowerCase()))
                 .map(s -> suggestionPrefix + s)
@@ -119,28 +112,24 @@ public class ActionFilter implements IFilter {
         for (String actionStr : split) {
             String trimmed = actionStr.trim();
 
-            // First check aliases
             List<IAction> aliasActions = ACTION_ALIASES.get(trimmed);
             if (aliasActions != null) {
                 parsedActions.addAll(aliasActions);
                 continue;
             }
 
-            // Then check direct action names
             IAction action = Actions.getAction(trimmed);
             if (action != null) {
                 parsedActions.add(action);
                 continue;
             }
 
-            // Also try with underscores replaced
             action = Actions.getAction(trimmed.replace("-", "_"));
             if (action != null) {
                 parsedActions.add(action);
                 continue;
             }
 
-            // Unknown action
             throw CommandSyntaxException.BUILT_IN_EXCEPTIONS.dispatcherUnknownArgument()
                     .createWithContext(reader);
         }

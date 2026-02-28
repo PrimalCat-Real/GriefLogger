@@ -46,7 +46,6 @@ public class RollbackCommand implements ICommand {
             return 0;
         }
 
-        // Check for active operation
         if (source.getEntity() instanceof ServerPlayer player) {
             if (RollbackProgress.hasActiveOperation(player.getUUID())) {
                 source.sendFailure(Theme.toMinecraft(Theme.error("A rollback operation is already in progress. Use /gl cancel to stop it.")));
@@ -61,14 +60,11 @@ public class RollbackCommand implements ICommand {
 
         long startTime = System.currentTimeMillis();
 
-        // Load block history
         ThreadManager.submit(() -> {
-            // Flush pending queues to ensure all recent changes are written to DB
             GriefLogger.getDatabase().flushQueues();
 
             List<IHistory> allHistory = new ArrayList<>(Services.BLOCK.getFilteredBlockHistory(source.getLevel(), filterList));
 
-            // Also load container history if #container flag is set
             if (includeContainers) {
                 allHistory.addAll(Services.CONTAINER.getFilteredContainerHistory(source.getLevel(), filterList));
             }
@@ -80,13 +76,11 @@ public class RollbackCommand implements ICommand {
                 return;
             }
 
-            // Handle preview mode
             if (isPreview) {
                 handlePreviewMode(source, filterList, history, startTime);
                 return;
             }
 
-            // Normal rollback execution with batch processing
             executeRollback(source, filterList, history);
         });
 
@@ -174,7 +168,6 @@ public class RollbackCommand implements ICommand {
         source.getServer().execute(() -> {
             new BatchProcessor(player, level, history, false, batchSize)
                     .onComplete(result -> {
-                        // Record the rollback operation for undo
                         if (!result.wasCancelled() && result.totalProcessed() > 0) {
                             recordRollbackJob(
                                     player,
@@ -187,7 +180,6 @@ public class RollbackCommand implements ICommand {
                             );
                         }
 
-                        // Send chat message (action bar already handled by BatchProcessor)
                         if (!result.wasCancelled()) {
                             Component chatMessage = buildResultMessage(
                                     "Rollback",
@@ -256,7 +248,6 @@ public class RollbackCommand implements ICommand {
         ThreadManager.submit(() -> {
             return Services.ROLLBACK.recordOperation(job, actions);
         }, jobId -> {
-            // Operation recorded
         });
     }
 }

@@ -17,7 +17,6 @@ import java.util.stream.Collectors;
  */
 public abstract class ItemFilter implements IFilter {
 
-    // Cache for item names (built once)
     private static List<String> cachedItemNames = null;
 
     private final List<Item> items;
@@ -37,7 +36,6 @@ public abstract class ItemFilter implements IFilter {
                     .map(item -> {
                         ResourceLocation loc = item.arch$registryName();
                         if (loc == null) return null;
-                        // Return without minecraft: prefix for vanilla items
                         return loc.getNamespace().equals("minecraft")
                                 ? loc.getPath()
                                 : loc.toString();
@@ -60,7 +58,6 @@ public abstract class ItemFilter implements IFilter {
         List<String> allItems = getOptions();
 
         if (suffix.isEmpty()) {
-            // Show common block types
             return allItems.stream()
                     .filter(s -> isCommonBlock(s))
                     .limit(15)
@@ -68,7 +65,6 @@ public abstract class ItemFilter implements IFilter {
                     .toArray(String[]::new);
         }
 
-        // Handle multiple items (comma-separated)
         if (suffix.contains(",")) {
             int lastComma = suffix.lastIndexOf(",");
             String[] usedItems = suffix.substring(0, lastComma).split(",");
@@ -83,7 +79,6 @@ public abstract class ItemFilter implements IFilter {
                     .toArray(String[]::new);
         }
 
-        // Filter items that start with suffix
         return allItems.stream()
                 .filter(s -> s.toLowerCase().startsWith(suffix.toLowerCase()))
                 .limit(15)
@@ -110,13 +105,11 @@ public abstract class ItemFilter implements IFilter {
         for (String itemName : split) {
             String trimmed = itemName.trim().toLowerCase();
 
-            // Handle namespaced and non-namespaced items
             Item found = BuiltInRegistries.ITEM.stream()
                     .filter(item -> {
                         ResourceLocation loc = item.arch$registryName();
                         if (loc == null) return false;
 
-                        // Match full name or path only for minecraft namespace
                         String fullName = loc.toString();
                         String path = loc.getPath();
 

@@ -35,7 +35,6 @@ public interface IFilter {
     }
 
     default String[] listSuggestions(SuggestionsBuilder builder, String prefix, String suffix) {
-        // Use short prefix format for suggestions (e.g., "u:Steve" instead of "user:Steve")
         String suggestionPrefix = String.valueOf(getPrefix()) + ":";
 
         if (suffix.contains(",")) {
@@ -58,7 +57,6 @@ public interface IFilter {
 
     default String[] listSuggestions(SuggestionsBuilder builder) {
         String str = builder.getRemaining();
-        // Support both ":" format (CoreProtect style)
         int colonIndex = str.indexOf(':');
         String prefix;
         String suffix;
@@ -67,7 +65,6 @@ public interface IFilter {
             prefix = str.substring(0, colonIndex);
             suffix = str.length() > colonIndex + 1 ? str.substring(colonIndex + 1) : "";
         } else {
-            // Fallback: try old "." format for backwards compatibility
             int dotIndex = str.indexOf('.');
             if (dotIndex != -1) {
                 prefix = str.substring(0, dotIndex);

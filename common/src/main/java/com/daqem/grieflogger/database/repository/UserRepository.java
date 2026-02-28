@@ -27,7 +27,6 @@ public class UserRepository extends Repository {
     }
 
     public void insertOrUpdateName(String name, String uuid) {
-        // This needs special handling due to ON CONFLICT/ON DUPLICATE KEY
         String query = Dialect.current() == Dialect.MYSQL
                 ? "INSERT INTO users(name, uuid) VALUES(?, ?) ON DUPLICATE KEY UPDATE name = ?"
                 : "INSERT INTO users(name, uuid) VALUES(?, ?) ON CONFLICT(uuid) DO UPDATE SET name = ?";

@@ -24,7 +24,6 @@ public class ThreadManager {
     }
 
     public static <T> Map<Future<T>, OnComplete<T>> getAndRemoveCompleted() {
-        //noinspection unchecked
         Map<Future<T>, OnComplete<T>> completedFutures = onCompleteMap.entrySet().stream()
                 .filter(entry -> entry.getKey().isDone())
                 .collect(Collectors.toMap(

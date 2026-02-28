@@ -13,7 +13,7 @@ public class Aggregate {
     BlockPos position;
     String preDestructionNbt;
     UUID userUuid;
-    String phantomUser;  // For natural events attribution (#water, #fire, etc.)
+    String phantomUser;  
 
     Aggregate(long tick, BlockEventKind kind, BlockPos position, UUID userUuid) {
         this.tick = tick;

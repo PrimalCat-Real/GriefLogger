@@ -11,4 +11,14 @@ public class GriefLoggerExpectPlatform {
     public static Path getConfigDirectory() {
         throw new AssertionError();
     }
+
+    @ExpectPlatform
+    public static int insertItem(net.minecraft.server.level.ServerLevel level, net.minecraft.core.BlockPos pos, net.minecraft.world.item.ItemStack stack) {
+        throw new AssertionError();
+    }
+
+    @ExpectPlatform
+    public static int extractItem(net.minecraft.server.level.ServerLevel level, net.minecraft.core.BlockPos pos, net.minecraft.world.item.ItemStack stack) {
+        throw new AssertionError();
+    }
 }

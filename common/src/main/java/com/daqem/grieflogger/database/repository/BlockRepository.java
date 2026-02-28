@@ -30,13 +30,11 @@ public class BlockRepository extends Repository {
     }
 
     public void createTable() {
-        // block_states table
         SchemaBuilder.create("block_states")
                 .id("id")
                 .string("state_string", 255, false, true)
                 .build(database);
 
-        // blocks table
         SchemaBuilder.create("blocks")
                 .bigint("time")
                 .integer("user")
@@ -56,8 +54,6 @@ public class BlockRepository extends Repository {
     }
 
     public void createIndexes() {
-        // Indexes are now created in createTable via SchemaBuilder
-        // Only add coordinates index here
         Dialect dialect = Dialect.current();
         if (dialect == Dialect.MYSQL) {
             database.execute("ALTER TABLE blocks ADD INDEX coordinates (x, y, z)", false);
@@ -71,19 +67,16 @@ public class BlockRepository extends Repository {
         String materialName = BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString();
         Dialect dialect = Dialect.current();
 
-        // Insert state
         Query.insert("block_states")
                 .value("state_string", stateString)
                 .ignore()
                 .queue(database);
 
-        // Insert material
         Query.insert("materials")
                 .value("name", materialName)
                 .ignore()
                 .queue(database);
 
-        // Insert block with subqueries
         String blockQuery = """
                 INSERT INTO blocks(time, user, level, x, y, z, state_id, type, action) VALUES(
                 ?, (SELECT id FROM users WHERE uuid = ?), (SELECT id FROM levels WHERE name = ?),
@@ -115,27 +108,22 @@ public class BlockRepository extends Repository {
         String stateString = BlockStateUtils.serialize(state);
         String materialName = BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString();
 
-        // Ensure phantom user exists in users table
-        // Use phantom user name as both UUID and name for easy identification
         Query.insert("users")
                 .value("uuid", phantomUser)
                 .value("name", phantomUser)
                 .ignore()
                 .queue(database);
 
-        // Insert state
         Query.insert("block_states")
                 .value("state_string", stateString)
                 .ignore()
                 .queue(database);
 
-        // Insert material
         Query.insert("materials")
                 .value("name", materialName)
                 .ignore()
                 .queue(database);
 
-        // Insert block with phantom user
         String blockQuery = """
                 INSERT INTO blocks(time, user, level, x, y, z, state_id, type, action) VALUES(
                 ?, (SELECT id FROM users WHERE uuid = ?), (SELECT id FROM levels WHERE name = ?),
@@ -145,7 +133,7 @@ public class BlockRepository extends Repository {
         try {
             PreparedStatement stmt = database.prepareStatement(blockQuery);
             stmt.setLong(1, time);
-            stmt.setString(2, phantomUser);  // Use phantom user as UUID
+            stmt.setString(2, phantomUser);  
             stmt.setString(3, levelName);
             stmt.setInt(4, x);
             stmt.setInt(5, y);
@@ -160,13 +148,11 @@ public class BlockRepository extends Repository {
     }
 
     public void insertMaterial(long time, String userUuid, String levelName, int x, int y, int z, String material, int blockAction) {
-        // Insert material
         Query.insert("materials")
                 .value("name", material)
                 .ignore()
                 .queue(database);
 
-        // Insert block with subqueries
         String blockQuery = """
                 INSERT INTO blocks(time, user, level, x, y, z, state_id, type, action) VALUES(
                 ?, (SELECT id FROM users WHERE uuid = ?), (SELECT id FROM levels WHERE name = ?),
@@ -189,13 +175,11 @@ public class BlockRepository extends Repository {
     }
 
     public void insertEntity(long time, String userUuid, String levelName, int x, int y, int z, String entity, int blockAction) {
-        // Insert entity
         Query.insert("entities")
                 .value("name", entity)
                 .ignore()
                 .queue(database);
 
-        // Insert block with subqueries
         String blockQuery = """
                 INSERT INTO blocks(time, user, level, x, y, z, state_id, type, action) VALUES(
                 ?, (SELECT id FROM users WHERE uuid = ?), (SELECT id FROM levels WHERE name = ?),
@@ -254,7 +238,6 @@ public class BlockRepository extends Repository {
     }
 
     public void removeInteractionsForPosition(String levelName, int x, int y, int z) {
-        // Need raw SQL for subquery in WHERE
         String query = """
                 DELETE FROM blocks WHERE level = (SELECT id FROM levels WHERE name = ?)
                 AND x = ? AND y = ? AND z = ? AND action = 2""";
@@ -332,7 +315,6 @@ public class BlockRepository extends Repository {
                 """.formatted(actions, users, includeMaterials, excludeMaterials);
 
         try (PreparedStatement preparedStatement = database.prepareStatement(query)) {
-            // ... (установка параметров без изменений) ...
             preparedStatement.setString(1, levelName);
             preparedStatement.setLong(2, filterList.getTime());
 

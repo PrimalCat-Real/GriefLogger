@@ -94,7 +94,6 @@ public abstract class MixinServerPlayer extends Player implements GriefLoggerSer
 
     @Inject(at = @At("HEAD"), method = "openMenu")
     public void openMenu(MenuProvider menuProvider, CallbackInfoReturnable<OptionalInt> cir) {
-        // Only run on server side
         if (level().isClientSide()) return;
 
         Optional<BaseContainerBlockEntity> container = ContainerHandler.getContainer(menuProvider);
@@ -123,9 +122,7 @@ public abstract class MixinServerPlayer extends Player implements GriefLoggerSer
     @Inject(at = @At("HEAD"), method = "tick")
     public void grieflogger$tick(CallbackInfo ci) {
         EnvExecutor.getInEnv(EnvType.SERVER, () -> () -> {
-            // Process item queue
             if (!grieflogger$itemQueue.isEmpty()) {
-                // Log item changes to console
                 for (Map.Entry<ItemAction, List<SimpleItemStack>> entry : grieflogger$itemQueue.entrySet()) {
                     for (SimpleItemStack item : entry.getValue()) {
                         GriefLogger.LOGGER.info("[Item] Action={} User={} Item={}x{} Pos={}",
@@ -138,7 +135,6 @@ public abstract class MixinServerPlayer extends Player implements GriefLoggerSer
                 grieflogger$itemQueue.clear();
             }
 
-            // Tick container transaction manager (real-time tracking)
             if (grieflogger$containerTransactionManager != null) {
                 grieflogger$containerTransactionManager.tick(grieflogger$asServerPlayer());
             }

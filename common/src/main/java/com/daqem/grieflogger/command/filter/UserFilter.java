@@ -41,7 +41,7 @@ public class UserFilter implements IFilter {
     @Override
     public List<String> getOptions() {
         List<String> options = new ArrayList<>();
-        options.add("#global");  // Special option for all users
+        options.add("#global");  
         options.addAll(Caches.USER.getAllUsernames().values());
         return options;
     }
@@ -53,14 +53,12 @@ public class UserFilter implements IFilter {
         List<String> allUsernames = getOptions();
 
         if (suffix.isEmpty()) {
-            // Show first 10 usernames + #global
             return allUsernames.stream()
                     .limit(15)
                     .map(s -> suggestionPrefix + s)
                     .toArray(String[]::new);
         }
 
-        // Handle multiple users (comma-separated)
         if (suffix.contains(",")) {
             int lastComma = suffix.lastIndexOf(",");
             String[] usedNames = suffix.substring(0, lastComma).split(",");
@@ -75,7 +73,6 @@ public class UserFilter implements IFilter {
                     .toArray(String[]::new);
         }
 
-        // Filter usernames that start with suffix
         return allUsernames.stream()
                 .filter(s -> s.toLowerCase().startsWith(suffix.toLowerCase()))
                 .limit(10)
@@ -87,12 +84,10 @@ public class UserFilter implements IFilter {
     public IFilter parse(StringReader reader, String suffix) throws CommandSyntaxException {
         String[] split = suffix.split(",");
 
-        // Check for #global
         if (split.length == 1 && split[0].equalsIgnoreCase("#global")) {
             return new UserFilter(new HashMap<>(), true);
         }
 
-        // Filter out #global if mixed with usernames
         List<String> usernamesToFind = Arrays.stream(split)
                 .filter(s -> !s.startsWith("#"))
                 .collect(Collectors.toList());

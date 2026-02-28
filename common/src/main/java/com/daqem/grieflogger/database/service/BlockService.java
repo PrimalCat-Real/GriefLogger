@@ -81,7 +81,6 @@ public class BlockService {
 
     public void getBlockHistoryAsync(Level level, BlockPos pos, OnComplete<List<IHistory>> onComplete) {
         ThreadManager.submit(() -> {
-            // Flush pending queues to ensure all recent changes are written to DB
             database.flushQueues();
             return getBlockHistory(level, pos);
         }, onComplete);
@@ -101,7 +100,6 @@ public class BlockService {
 
     public void getBlockHistoryAsync(Level level, List<BlockPos> pos, OnComplete<List<IHistory>> onComplete) {
         ThreadManager.submit(() -> {
-            // Flush pending queues to ensure all recent changes are written to DB
             database.flushQueues();
             return getBlockHistory(level, pos);
         }, onComplete);
@@ -130,7 +128,6 @@ public class BlockService {
 
     public void getInteractionHistoryAsync(Level level, List<BlockPos> pos, OnComplete<List<IHistory>> onComplete) {
         ThreadManager.submit(() -> {
-            // Flush pending queues to ensure all recent changes are written to DB
             database.flushQueues();
             return getInteractionHistory(level, pos);
         }, onComplete);

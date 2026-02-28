@@ -57,14 +57,12 @@ public class RadiusFilter implements IFilter {
         String suggestionPrefix = "r:";
 
         if (suffix.isEmpty()) {
-            // Suggest common radii and #global
             List<String> suggestions = new java.util.ArrayList<>();
             suggestions.add(suggestionPrefix + "#global");
             COMMON_RADII.forEach(r -> suggestions.add(suggestionPrefix + r));
             return suggestions.toArray(String[]::new);
         }
 
-        // If typing #, suggest #global
         if (suffix.startsWith("#")) {
             if ("#global".startsWith(suffix.toLowerCase())) {
                 return new String[]{suggestionPrefix + "#global"};
@@ -72,7 +70,6 @@ public class RadiusFilter implements IFilter {
             return new String[0];
         }
 
-        // If typing a number, suggest completing it
         if (suffix.chars().allMatch(Character::isDigit)) {
             return COMMON_RADII.stream()
                     .map(String::valueOf)
@@ -88,23 +85,20 @@ public class RadiusFilter implements IFilter {
     public IFilter parse(StringReader reader, String suffix) throws CommandSyntaxException {
         String lower = suffix.toLowerCase().trim();
 
-        // Check for #global
         if (lower.equals("#global") || lower.equals("global")) {
             return new RadiusFilter(GLOBAL_RADIUS, true);
         }
 
-        // Check for chunk radius (c4 = 4 chunks)
         if (lower.startsWith("c") && lower.length() > 1) {
             try {
                 int chunks = Integer.parseInt(lower.substring(1));
-                return new RadiusFilter(chunks * 16, false);  // 1 chunk = 16 blocks
+                return new RadiusFilter(chunks * 16, false);  
             } catch (NumberFormatException e) {
                 throw CommandSyntaxException.BUILT_IN_EXCEPTIONS.readerInvalidInt()
                         .createWithContext(reader, lower.substring(1));
             }
         }
 
-        // Regular block radius
         try {
             int radius = Integer.parseInt(lower);
             if (radius < 0) {

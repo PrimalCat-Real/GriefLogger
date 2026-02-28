@@ -17,7 +17,6 @@ public class InspectContainerEvent extends AbstractEvent {
 
     public static EventResult inspectContainer(GriefLoggerServerPlayer serverPlayer, Level level, BlockPos pos) {
         ThreadManager.submit(() -> {
-            // Flush pending queues to ensure all recent changes are written to DB
             GriefLogger.getDatabase().flushQueues();
 
             List<IHistory> history = new ArrayList<>();
@@ -38,7 +37,6 @@ public class InspectContainerEvent extends AbstractEvent {
 
     public static EventResult inspectContainers(GriefLoggerServerPlayer serverPlayer, Level level, BlockPos pos, BlockPos connectionPos) {
         ThreadManager.submit(() -> {
-            // Flush pending queues to ensure all recent changes are written to DB
             GriefLogger.getDatabase().flushQueues();
 
             List<IHistory> history = new ArrayList<>();

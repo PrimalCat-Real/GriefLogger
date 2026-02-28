@@ -1,0 +1,18 @@
+{
+  "required": false,
+  "package": "com.daqem.grieflogger.neoforge.mixin.create",
+  "compatibilityLevel": "JAVA_21",
+  "minVersion": "0.8",
+  "plugin": "com.daqem.grieflogger.neoforge.mixin.create.CreateMixinPlugin",
+  "client": [
+  ],
+  "mixins": [
+    "ArmBlockEntityMixin",
+    "BeltInventoryMixin",
+    "ChuteBlockEntityMixin",
+    "DrillBlockEntityMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 0
+  }
+}

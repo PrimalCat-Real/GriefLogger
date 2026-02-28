@@ -36,7 +36,6 @@ public class FilterArgument {
             return new FilterList(filters, source);
         }
 
-        // Split by whitespace
         String[] tokens = raw.trim().split("\\s+");
 
         for (String token : tokens) {
@@ -46,7 +45,6 @@ public class FilterArgument {
                     filters.add(filter);
                 }
             } catch (CommandSyntaxException e) {
-                // Skip invalid tokens, or could log warning
             }
         }
 
@@ -63,7 +61,6 @@ public class FilterArgument {
 
         String trimmed = token.trim();
 
-        // Find separator (prefer ":" but fallback to "." for backwards compatibility)
         int separatorIndex = trimmed.indexOf(SEPARATOR);
 
         if (separatorIndex == -1) {
@@ -71,19 +68,19 @@ public class FilterArgument {
         }
 
         if (separatorIndex == -1 || separatorIndex == 0) {
-            return null; // No valid separator found
+            return null; 
         }
 
         String prefix = trimmed.substring(0, separatorIndex);
         IFilter filter = Filters.fromPrefix(prefix);
 
         if (filter == null) {
-            return null; // Unknown filter prefix
+            return null; 
         }
 
         String suffix = trimmed.substring(separatorIndex + 1);
         if (suffix.isEmpty()) {
-            return null; // Empty value
+            return null; 
         }
 
         return filter.parse(new StringReader(trimmed), suffix);
@@ -99,12 +96,10 @@ public class FilterArgument {
     ) {
         String input = builder.getRemaining();
 
-        // Find the last token being typed
         int lastSpace = input.lastIndexOf(' ');
         String currentToken = lastSpace >= 0 ? input.substring(lastSpace + 1) : input;
         String prefix = lastSpace >= 0 ? input.substring(0, lastSpace + 1) : "";
 
-        // Parse already entered filters
         List<IFilter> existingFilters = new ArrayList<>();
         if (lastSpace > 0) {
             String[] previousTokens = input.substring(0, lastSpace).trim().split("\\s+");
@@ -119,10 +114,8 @@ public class FilterArgument {
             }
         }
 
-        // Get suggestions based on current token
         String[] suggestions = getSuggestionsForToken(currentToken, existingFilters);
 
-        // Build suggestions with prefix
         SuggestionsBuilder offsetBuilder = builder.createOffset(builder.getStart() + prefix.length());
         return SharedSuggestionProvider.suggest(suggestions, offsetBuilder);
     }
@@ -133,16 +126,13 @@ public class FilterArgument {
     private static String[] getSuggestionsForToken(String currentToken, List<IFilter> existingFilters) {
         String lower = currentToken.toLowerCase();
 
-        // Extract prefix if separator exists
         int colonIndex = lower.indexOf(':');
         int dotIndex = lower.indexOf('.');
 
-        // If no separator, suggest filter prefixes
         if (colonIndex == -1 && dotIndex == -1) {
             return getAvailableFilterPrefixes(existingFilters, lower);
         }
 
-        // Has separator - suggest values for this filter
         int sepIndex = colonIndex != -1 ? colonIndex : dotIndex;
         String filterPrefix = lower.substring(0, sepIndex);
         String valuePart = lower.substring(sepIndex + 1);
@@ -152,7 +142,6 @@ public class FilterArgument {
             return new String[0];
         }
 
-        // Get value suggestions from the filter
         return filter.listSuggestions(null, filterPrefix, valuePart);
     }
 
@@ -163,7 +152,6 @@ public class FilterArgument {
         List<String> suggestions = new ArrayList<>();
 
         for (IFilter filter : Filters.FILTERS) {
-            // Skip if this filter type is already used
             boolean alreadyUsed = existingFilters.stream()
                     .anyMatch(f -> f.getClass().equals(filter.getClass()));
             if (alreadyUsed) {

@@ -19,7 +19,7 @@ public class ContainerTransactionManager implements IContainerTransactionManager
     private final BaseContainerBlockEntity blockEntity;
     private List<SimpleItemStack> lastKnownState = new ArrayList<>();
     private int tickCounter = 0;
-    private static final int TICK_INTERVAL = 1; // Check every tick for real-time tracking
+    private static final int TICK_INTERVAL = 1; 
 
     public ContainerTransactionManager(BaseContainerBlockEntity blockEntity) {
         this.blockEntity = blockEntity;
@@ -37,17 +37,13 @@ public class ContainerTransactionManager implements IContainerTransactionManager
         List<SimpleItemStack> currentState = new ArrayList<>();
         captureState(currentState);
 
-        // Compare and log differences
         List<SimpleItemStack> removedItems = getDifference(lastKnownState, currentState);
         List<SimpleItemStack> addedItems = getDifference(currentState, lastKnownState);
 
-        // Check if there was recent automated activity on this container
-        // If so, skip logging entirely to avoid duplicate attribution
         BlockPos containerPos = blockEntity.getBlockPos();
         boolean hasAutomatedActivity = AutomatedTransferTracker.getInstance().hasRecentAutomatedActivity(containerPos);
 
         if (!hasAutomatedActivity && (!removedItems.isEmpty() || !addedItems.isEmpty())) {
-            // Log changes (only if no automated activity)
             for (SimpleItemStack item : removedItems) {
                 GriefLogger.LOGGER.info("[Container] Action=REMOVE User={} Item={}x{} Pos={}",
                         serverPlayer.getName().getString(),
@@ -61,7 +57,6 @@ public class ContainerTransactionManager implements IContainerTransactionManager
                         blockEntity.getBlockPos().toShortString());
             }
 
-            // Insert to database
             Services.CONTAINER.insertMap(
                     serverPlayer.getUUID(),
                     blockEntity.getLevel() != null ? blockEntity.getLevel() : serverPlayer.level(),
@@ -73,8 +68,6 @@ public class ContainerTransactionManager implements IContainerTransactionManager
             );
         }
 
-        // ALWAYS update last known state, even if we skipped logging
-        // This prevents re-detecting the same change on the next tick
         if (!removedItems.isEmpty() || !addedItems.isEmpty()) {
             lastKnownState = currentState;
         }
@@ -82,14 +75,12 @@ public class ContainerTransactionManager implements IContainerTransactionManager
 
     @Override
     public void finalize(ServerPlayer serverPlayer) {
-        // Final check when closing
         List<SimpleItemStack> currentState = new ArrayList<>();
         captureState(currentState);
 
         List<SimpleItemStack> removedItems = getDifference(lastKnownState, currentState);
         List<SimpleItemStack> addedItems = getDifference(currentState, lastKnownState);
 
-        // Check if there was recent automated activity on this container
         BlockPos containerPos = blockEntity.getBlockPos();
         boolean hasAutomatedActivity = AutomatedTransferTracker.getInstance().hasRecentAutomatedActivity(containerPos);
 

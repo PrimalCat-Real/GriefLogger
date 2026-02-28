@@ -5,7 +5,8 @@ public enum BlockEventKind {
     SYSTEM_SET(2),
     SYSTEM_BREAK(3),
     PLAYER_PLACE(10),
-    PLAYER_BREAK(11);
+    PLAYER_BREAK(11),
+    MIXIN_SPECIAL(10);
     public final int priority;
 
     BlockEventKind(int priority) {

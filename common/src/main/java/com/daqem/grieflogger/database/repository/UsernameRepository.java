@@ -13,7 +13,6 @@ public class UsernameRepository extends Repository {
     }
 
     public void createTable() {
-        // Custom SQL needed for compound UNIQUE constraint
         Dialect dialect = Dialect.current();
         String sql;
         if (dialect == Dialect.MYSQL) {

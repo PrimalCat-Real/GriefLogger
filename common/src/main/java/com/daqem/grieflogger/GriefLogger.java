@@ -28,25 +28,29 @@ public class GriefLogger {
     public static final String MOD_ID = "grieflogger";
     public static final Logger LOGGER = LogUtils.getLogger();
 
-    // ============================================
-    // PHANTOM USERS - Natural event attribution
-    // ============================================
-    // Phantom users allow logging natural events with proper attribution
-    // instead of ignoring them completely. This enables rollback of
-    // structures destroyed by water, fire, etc.
 
     public static final String PHANTOM_WATER = "#water";
     public static final String PHANTOM_LAVA = "#lava";
     public static final String PHANTOM_FIRE = "#fire";
-    public static final String PHANTOM_DECAY = "#decay";          // Leaf decay
-    public static final String PHANTOM_VINE = "#vine";            // Vine/plant growth
-    public static final String PHANTOM_EXPLOSION = "#explosion";  // TNT, creeper, etc.
+    public static final String PHANTOM_DECAY = "#decay";          
+    public static final String PHANTOM_VINE = "#vine";            
+    public static final String PHANTOM_EXPLOSION = "#explosion";  
     public static final String PHANTOM_PISTON = "#piston";
     public static final String PHANTOM_ENDERMAN = "#enderman";
-    public static final String PHANTOM_GRAVITY = "#gravity";      // Sand, gravel falling
-    public static final String PHANTOM_HOPPER = "#hopper";        // Hopper transfers
-    public static final String PHANTOM_CHUTE = "#chute";          // Create mod chute
+    public static final String PHANTOM_GRAVITY = "#gravity";      
+    public static final String PHANTOM_HOPPER = "#hopper";        
+    public static final String PHANTOM_CHUTE = "#chute";          
     public static final String PHANTOM_UNKNOWN = "#unknown";
+
+    private static final ThreadLocal<Boolean> ROLLBACK_ACTIVE = ThreadLocal.withInitial(() -> false);
+
+    public static void setRollbackActive(boolean active) {
+        ROLLBACK_ACTIVE.set(active);
+    }
+
+    public static boolean isRollbackActive() {
+        return ROLLBACK_ACTIVE.get();
+    }
 
     /**
      * Database type selector:
@@ -70,10 +74,8 @@ public class GriefLogger {
     }
 
     private static void startBackgroundThreads() {
-        // Start database consumer thread (double-buffer queue)
         Consumer.start(DATABASE);
 
-        // Start cache cleanup thread
         CacheHandler.start();
 
         LOGGER.info("Background threads started");
@@ -86,13 +88,10 @@ public class GriefLogger {
     public static void shutdown() {
         LOGGER.info("Shutting down GriefLogger...");
 
-        // Stop consumer thread (will process remaining queue)
         Consumer.stop();
 
-        // Stop cache handler thread
         CacheHandler.stop();
 
-        // Perform final WAL checkpoint for SQLite
         if (DATABASE != null && DATABASE_TYPE == 0) {
             DATABASE.performWalCheckpoint();
         }
@@ -108,8 +107,6 @@ public class GriefLogger {
         BlockEvents.registerEvents();
         TickEvents.registerEvents();
         EntityEvents.registerEvents();
-        // TODO: Item logging disabled for rework
-        // ItemEvents.registerEvents();
 
         PlayerJoinEvent.registerEvent();
         PlayerQuitEvent.registerEvent();
@@ -124,7 +121,6 @@ public class GriefLogger {
         LOGGER.info("Preparing GriefLogger database...");
         long start = System.currentTimeMillis();
 
-        // Set database type from config (backwards compatible)
         DATABASE_TYPE = GriefLoggerConfig.useMysql.get() ? 1 : 0;
 
         try {
@@ -155,6 +151,7 @@ public class GriefLogger {
         Services.COMMAND.createTable();
         Services.ITEM.createTable();
         Services.ROLLBACK.createTable();
+        Services.CHUNK_BACKUP.createTable();
 
         if (GriefLoggerConfig.useIndexes.get()) {
             Services.BLOCK.createIndexes();

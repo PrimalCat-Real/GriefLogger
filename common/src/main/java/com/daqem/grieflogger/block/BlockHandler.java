@@ -46,7 +46,6 @@ public class BlockHandler {
     }
 
     public static List<String> getIntractableBlocks() {
-        //TODO Add config option to add blocks to this list
         return List.of();
     }
 

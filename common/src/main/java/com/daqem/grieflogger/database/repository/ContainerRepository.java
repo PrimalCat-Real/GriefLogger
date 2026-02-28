@@ -50,7 +50,6 @@ public class ContainerRepository extends Repository {
     }
 
     public void createIndexes() {
-        // Indexes are now created in createTable via SchemaBuilder
     }
 
     public void insert(long time, String userUuid, Level level, int x, int y, int z, SimpleItemStack item, int itemAction) {
@@ -62,13 +61,11 @@ public class ContainerRepository extends Repository {
         if (itemLocation != null) {
             String materialName = itemLocation.toString().replace("minecraft:", "");
 
-            // Insert material
             Query.insert("materials")
                     .value("name", materialName)
                     .ignore()
                     .queue(database);
 
-            // Insert container with subqueries
             String insertQuery = """
                     INSERT INTO containers(time, user, level, x, y, z, type, data, amount, action)
                     VALUES(?, (SELECT id FROM users WHERE uuid = ?), (SELECT id FROM levels WHERE name = ?),
@@ -106,13 +103,11 @@ public class ContainerRepository extends Repository {
         if (itemLocation != null) {
             String materialName = itemLocation.toString().replace("minecraft:", "");
 
-            // Insert material
             Query.insert("materials")
                     .value("name", materialName)
                     .ignore()
                     .queue(database);
 
-            // Insert container with phantom user
             String insertQuery = """
                     INSERT INTO containers(time, user, level, x, y, z, type, data, amount, action)
                     VALUES(?, (SELECT id FROM users WHERE uuid = ?), (SELECT id FROM levels WHERE name = ?),
@@ -121,7 +116,7 @@ public class ContainerRepository extends Repository {
             try {
                 PreparedStatement stmt = database.prepareStatement(insertQuery);
                 stmt.setLong(1, time);
-                stmt.setString(2, phantomUser);  // Phantom user as UUID
+                stmt.setString(2, phantomUser);  
                 stmt.setString(3, level.dimension().location().toString());
                 stmt.setInt(4, x);
                 stmt.setInt(5, y);
@@ -154,7 +149,6 @@ public class ContainerRepository extends Repository {
                 if (itemLocation != null) {
                     String materialName = itemLocation.toString().replace("minecraft:", "");
 
-                    // Insert material
                     Query.insert("materials")
                             .value("name", materialName)
                             .ignore()
@@ -197,7 +191,6 @@ public class ContainerRepository extends Repository {
                     if (itemLocation != null) {
                         String materialName = itemLocation.toString().replace("minecraft:", "");
 
-                        // Insert material
                         Query.insert("materials")
                                 .value("name", materialName)
                                 .ignore()

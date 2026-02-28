@@ -49,7 +49,6 @@ public class ItemRepository extends Repository {
     }
 
     public void createIndexes() {
-        // Indexes are now created in createTable via SchemaBuilder
     }
 
     public void insert(long time, String userUuid, Level level, int x, int y, int z, SimpleItemStack item, int action) {
@@ -61,13 +60,11 @@ public class ItemRepository extends Repository {
         if (itemLocation != null) {
             String materialName = itemLocation.toString().replace("minecraft:", "");
 
-            // Insert material
             Query.insert("materials")
                     .value("name", materialName)
                     .ignore()
                     .queue(database);
 
-            // Insert item with subqueries
             String insertQuery = """
                     INSERT INTO items(time, user, level, x, y, z, type, data, amount, action)
                     VALUES(?, (SELECT id FROM users WHERE uuid = ?), (SELECT id FROM levels WHERE name = ?),
@@ -110,7 +107,6 @@ public class ItemRepository extends Repository {
                     if (itemLocation != null) {
                         String materialName = itemLocation.toString().replace("minecraft:", "");
 
-                        // Insert material
                         Query.insert("materials")
                                 .value("name", materialName)
                                 .ignore()

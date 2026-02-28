@@ -20,7 +20,6 @@ public class FilterList {
     private @Nullable TimeFilter timeFilter;
     private @Nullable UserFilter userFilter;
 
-    // Flags
     private boolean countOnly = false;
     private boolean preview = false;
     private boolean verbose = false;
@@ -43,7 +42,6 @@ public class FilterList {
         timeFilter = (TimeFilter) filterMap.get(TimeFilter.class);
         userFilter = (UserFilter) filterMap.get(UserFilter.class);
 
-        // Process flags
         filters.stream()
                 .filter(f -> f instanceof FlagsFilter)
                 .map(f -> (FlagsFilter) f)
@@ -169,9 +167,6 @@ public class FilterList {
         this.userFilter = userFilter;
     }
 
-    // ============================================
-    // FLAGS
-    // ============================================
 
     public boolean isCountOnly() {
         return countOnly;

@@ -26,12 +26,6 @@ public class PlaceBlockEvent {
                         serverPlayer.grieflogger$asServerPlayer().getUUID()
                 );
             }
-//            try {
-//                BlockEventLock.lock();
-//                LogBlockEvent.logBlock(serverPlayer, level, state, pos, BlockAction.PLACE_BLOCK);
-//            } finally {
-//                BlockEventLock.unlock();
-//            }
 
         }
     }

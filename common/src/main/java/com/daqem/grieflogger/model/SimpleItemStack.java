@@ -37,7 +37,6 @@ public class SimpleItemStack {
 
     @Override
     public boolean equals(Object o) {
-        //DOES NOT CHECK COUNT
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         SimpleItemStack that = (SimpleItemStack) o;
@@ -46,7 +45,6 @@ public class SimpleItemStack {
 
     @Override
     public int hashCode() {
-        // Must match equals() - does not include count
         return Objects.hash(item, tag);
     }
 
@@ -113,7 +111,6 @@ public class SimpleItemStack {
         if (CompressionUtils.hasCompressionHeader(data)) {
             decompressed = CompressionUtils.decompress(data);
         } else {
-            // Legacy uncompressed data (for backwards compatibility)
             decompressed = data;
         }
 

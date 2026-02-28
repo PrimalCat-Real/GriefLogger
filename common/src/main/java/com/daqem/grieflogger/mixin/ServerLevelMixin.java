@@ -19,8 +19,6 @@ public abstract class ServerLevelMixin {
 
         if (progress >= 9) {
             ServerLevel serverLevel = (ServerLevel)(Object)this;
-//            System.out.println("[BlockBreak] Final progress at " + pos +
-//                    " (breakerId: " + breakerId + ")");
 
             BlockState oldState = serverLevel.getBlockState(pos);
 

@@ -18,8 +18,8 @@ public class TimeFilter implements IFilter {
     private static final List<Integer> NUMBERS = List.of(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 24, 30);
     private static final List<String> TIME_UNITS = List.of("s", "m", "h", "d", "w", "mo", "y");
 
-    private final long startTime;  // Start of time range (earlier)
-    private final long endTime;    // End of time range (later, 0 = now)
+    private final long startTime;  
+    private final long endTime;    
 
     public TimeFilter() {
         this.startTime = 0;
@@ -46,30 +46,24 @@ public class TimeFilter implements IFilter {
         String suggestionPrefix = "t:";
 
         if (suffix.isEmpty()) {
-            // Suggest common time values
             return NUMBERS.stream()
                     .map(n -> suggestionPrefix + n)
                     .toArray(String[]::new);
         }
 
-        // Extract the last numeric part for suggesting time units
         String lastPart = extractLastNumericPart(suffix);
 
         if (!lastPart.isEmpty()) {
-            // User typed a number, suggest time units
             String basePart = suffix.substring(0, suffix.length() - lastPart.length());
             return TIME_UNITS.stream()
                     .map(unit -> suggestionPrefix + basePart + lastPart + unit)
                     .toArray(String[]::new);
         }
 
-        // Check if suffix ends with a complete time unit
         if (endsWithTimeUnit(suffix)) {
-            // Suggest adding more time or completing
             List<String> suggestions = new ArrayList<>();
-            suggestions.add(suggestionPrefix + suffix);  // Current value is valid
+            suggestions.add(suggestionPrefix + suffix);  
 
-            // Suggest adding more numbers
             for (int n : List.of(1, 2, 5, 10)) {
                 suggestions.add(suggestionPrefix + suffix + n);
             }

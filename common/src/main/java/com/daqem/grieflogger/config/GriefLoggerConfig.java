@@ -31,7 +31,6 @@ public class GriefLoggerConfig {
     public static final Supplier<Integer> queueFrequency;
     public static final Supplier<Integer> helloFrequency;
 
-    // Logging settings - what natural events to log
     public static final Supplier<Boolean> logWaterFlow;
     public static final Supplier<Boolean> logLavaFlow;
     public static final Supplier<Boolean> logLeafDecay;

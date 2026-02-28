@@ -75,4 +75,22 @@ public class UserRepository extends Repository {
                 });
         return usernames;
     }
+
+    public List<String> getUuidsByIds(Collection<Integer> ids) {
+        if (ids == null || ids.isEmpty()) return List.of();
+        List<String> result = new ArrayList<>();
+        Query.select("users")
+                .columns("uuid")
+                .whereIn("id", ids)
+                .execute(database, rs -> {
+                    try {
+                        result.add(rs.getString("uuid"));
+                    } catch (SQLException e) {
+                        GriefLogger.LOGGER.error("Failed to read uuid", e);
+                    }
+                    return null;
+                });
+        return result;
+    }
 }
+

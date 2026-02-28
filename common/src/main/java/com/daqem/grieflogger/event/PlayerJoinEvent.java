@@ -2,6 +2,7 @@ package com.daqem.grieflogger.event;
 
 import com.daqem.grieflogger.database.service.Services;
 import com.daqem.grieflogger.model.action.SessionAction;
+import com.daqem.grieflogger.model.home.PlayerHomeTracker;
 import com.mojang.authlib.GameProfile;
 import dev.architectury.event.events.common.PlayerEvent;
 
@@ -25,6 +26,8 @@ public class PlayerJoinEvent {
                     player.getOnPos(),
                     SessionAction.JOIN
             );
+
+            PlayerHomeTracker.getInstance().onPlayerJoin(player);
         });
     }
 }

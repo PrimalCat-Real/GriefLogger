@@ -1,17 +1,20 @@
 package com.daqem.grieflogger.event;
-
 import com.daqem.grieflogger.database.service.Services;
 import com.daqem.grieflogger.model.action.SessionAction;
+import com.daqem.grieflogger.model.home.PlayerHomeTracker;
 import dev.architectury.event.events.common.PlayerEvent;
 
 public class PlayerQuitEvent {
 
     public static void registerEvent() {
-        PlayerEvent.PLAYER_QUIT.register(player ->
+        PlayerEvent.PLAYER_QUIT.register(player -> {
                 Services.SESSION.insert(
                         player.getUUID(),
                         player.level(),
                         player.getOnPos(),
-                        SessionAction.QUIT));
+                        SessionAction.QUIT);
+
+                PlayerHomeTracker.getInstance().onPlayerQuit(player);
+        });
     }
 }

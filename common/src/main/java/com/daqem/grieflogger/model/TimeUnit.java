@@ -153,6 +153,13 @@ public enum TimeUnit {
             }
         }
 
+        if (numberBuffer.length() > 0) {
+            try {
+                double value = Double.parseDouble(numberBuffer.toString());
+                totalMillis += (long) (value * DAY.getMilliseconds()); // Default to days if no unit
+            } catch (NumberFormatException ignored) {}
+        }
+
         return totalMillis;
     }
 }

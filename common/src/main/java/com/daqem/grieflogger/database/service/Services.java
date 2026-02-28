@@ -21,6 +21,7 @@ public interface Services {
     UsernameService USERNAME = new UsernameService(GriefLogger.getDatabase());
     UserService USER = new UserService(GriefLogger.getDatabase());
     ChunkBackupService CHUNK_BACKUP = new ChunkBackupService(GriefLogger.getDatabase());
+    PlayerHomeService PLAYER_HOME = new PlayerHomeService(GriefLogger.getDatabase());
 
     /**
      * Purge all data older than the specified cutoff time.

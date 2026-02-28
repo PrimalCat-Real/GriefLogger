@@ -152,6 +152,7 @@ public class GriefLogger {
         Services.ITEM.createTable();
         Services.ROLLBACK.createTable();
         Services.CHUNK_BACKUP.createTable();
+        Services.PLAYER_HOME.createTable();
 
         if (GriefLoggerConfig.useIndexes.get()) {
             Services.BLOCK.createIndexes();

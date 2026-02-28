@@ -2,8 +2,6 @@ package com.daqem.grieflogger.database.service;
 
 import com.daqem.grieflogger.database.Database;
 import com.daqem.grieflogger.database.repository.UserRepository;
-import com.daqem.grieflogger.thread.ThreadManager;
-
 import java.util.Map;
 import java.util.UUID;
 
@@ -28,6 +26,10 @@ public class UserService {
 
     public Map<Integer, String> getAllUsernames() {
         return userRepository.getAllUsernames();
+    }
+
+    public java.util.List<String> getUuidsByIds(java.util.Collection<Integer> ids) {
+        return userRepository.getUuidsByIds(ids);
     }
 
     /**

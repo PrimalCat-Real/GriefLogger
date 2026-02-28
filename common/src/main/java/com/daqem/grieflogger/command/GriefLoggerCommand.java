@@ -21,6 +21,8 @@ public class GriefLoggerCommand {
     private static final ICommand PURGE = new PurgeCommand();
     private static final ICommand CHUNK_BACKUP = new ChunkBackupCommand();
     private static final ICommand CHUNK_LIST = new ChunkListCommand();
+    private static final ICommand CHUNK_RESTORE = new ChunkRestoreCommand();
+    private static final ICommand CHUNK_PURGE = new ChunkPurgeCommand();
 
     public static void registerCommand(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(commandWithPrefix("grieflogger"));
@@ -44,6 +46,8 @@ public class GriefLoggerCommand {
                 .then(CANCEL.getCommand())
                 .then(PURGE.getCommand())
                 .then(CHUNK_BACKUP.getCommand())
-                .then(CHUNK_LIST.getCommand());
+                .then(CHUNK_LIST.getCommand())
+                .then(CHUNK_RESTORE.getCommand())
+                .then(CHUNK_PURGE.getCommand());
     }
 }

@@ -4,6 +4,7 @@ import com.daqem.grieflogger.GriefLogger;
 import com.daqem.grieflogger.block.coalesce.BlockEventCoalescer;
 import com.daqem.grieflogger.config.GriefLoggerConfig;
 import com.daqem.grieflogger.database.Database;
+import com.daqem.grieflogger.model.home.PlayerHomeTracker;
 import com.daqem.grieflogger.thread.ThreadManager;
 import dev.architectury.event.events.common.TickEvent;
 import net.minecraft.server.level.ServerLevel;
@@ -45,6 +46,8 @@ public class TickEvents {
             for (ServerLevel level : server.getAllLevels()) {
                 BlockEventCoalescer.tick(level);
             }
+
+            PlayerHomeTracker.getInstance().tick(server);
         });
     }
 }

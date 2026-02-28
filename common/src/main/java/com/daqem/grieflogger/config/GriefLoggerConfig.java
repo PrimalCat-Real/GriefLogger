@@ -41,6 +41,16 @@ public class GriefLoggerConfig {
     public static final Supplier<Boolean> logGravity;
     public static final Supplier<Boolean> logEntityChanges;
 
+    // Home detection
+    public static final Supplier<Boolean> homesEnabled;
+    public static final Supplier<Integer> homeTrackInterval;
+    public static final Supplier<Integer> homeClusterInterval;
+    public static final Supplier<Integer> homeMinClusterPoints;
+    public static final Supplier<Integer> homeStayChecks;
+    public static final Supplier<Integer> homeBackupCooldown;
+    public static final Supplier<Integer> homeMaxBackupsPerHome;
+    public static final Supplier<Integer> homeQuitDelay;
+
     static {
         IConfigBuilder config = ConfigBuilders.newTomlConfig(GriefLogger.MOD_ID, GriefLogger.MOD_ID, true);
         config.push("database");
@@ -85,6 +95,17 @@ public class GriefLoggerConfig {
         logPistons = config.comment("Log piston push/pull events (attributed to #piston)").onlyOnServer().define("pistons", true);
         logGravity = config.comment("Log falling block events like sand/gravel (attributed to #gravity)").onlyOnServer().define("gravity", true);
         logEntityChanges = config.comment("Log entity-caused block changes (enderman, etc.)").onlyOnServer().define("entityChanges", true);
+        config.pop();
+
+        config.push("homes");
+        homesEnabled = config.comment("Enable automatic home detection and chunk backup").onlyOnServer().define("enabled", true);
+        homeTrackInterval = config.comment("How often to sample player positions (in ticks, 1200 = 1 minute)").onlyOnServer().define("trackInterval", 1200, 200, 6000);
+        homeClusterInterval = config.comment("How often to cluster hot points and detect homes (in ticks, 12000 = 10 minutes)").onlyOnServer().define("clusterInterval", 12000, 2400, 72000);
+        homeMinClusterPoints = config.comment("Minimum points in a cluster to be considered a home candidate").onlyOnServer().define("minClusterPoints", 5, 2, 50);
+        homeStayChecks = config.comment("Consecutive checks player must be at home to trigger backup").onlyOnServer().define("stayChecks", 5, 1, 30);
+        homeBackupCooldown = config.comment("Minimum seconds between auto-backups of the same home").onlyOnServer().define("backupCooldown", 21600, 600, 604800);
+        homeMaxBackupsPerHome = config.comment("Max backups per home before oldest gets deleted").onlyOnServer().define("maxBackupsPerHome", 90, 5, 1000);
+        homeQuitDelay = config.comment("Seconds to wait after player quits before processing their data").onlyOnServer().define("quitDelay", 300, 30, 1800);
         config.pop();
 
         config.build();

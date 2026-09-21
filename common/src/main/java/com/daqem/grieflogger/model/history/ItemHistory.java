@@ -62,7 +62,9 @@ public class ItemHistory extends History {
         int cappedCount = Math.min(itemStack.getCount(), 64); 
         var cappedItemStack = itemStack.toItemStack().copyWithCount(cappedCount);
 
-        MutableComponent mutableComponent = GriefLogger.themedLiteral(this.itemStack.getItem().arch$registryName().toString().replace("minecraft:", ""));
+        MutableComponent mutableComponent = Theme.toMinecraft(
+                Theme.fromMinecraft(cappedItemStack.getHoverName()).color(Theme.PRIMARY)
+        ).copy();
         return mutableComponent
                 .withStyle(mutableComponent
                         .getStyle()

@@ -27,6 +27,7 @@ public class GriefLoggerConfig {
     public static final Supplier<Integer> purgeMinDays;
 
     public static final Supplier<Boolean> serverSideOnlyMode;
+    public static final Supplier<String> serverLanguage;
 
     public static final Supplier<Integer> queueFrequency;
     public static final Supplier<Integer> helloFrequency;
@@ -75,6 +76,8 @@ public class GriefLoggerConfig {
 
         config.push("server");
         serverSideOnlyMode = config.comment("Whether to run the mod in server side only mode").onlyOnServer().define("serverSideOnlyMode", true);
+        serverLanguage = config.comment("Fallback language for clients without GriefLogger resources (for example: en_us or ru_ru)")
+                .onlyOnServer().define("language", "ru_ru", 2, 16);
         config.pop();
 
         config.push("queue");

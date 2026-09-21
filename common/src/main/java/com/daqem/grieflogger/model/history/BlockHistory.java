@@ -59,7 +59,9 @@ public class BlockHistory extends History {
     public Component getMaterialComponent() {
 
         var item = BuiltInRegistries.BLOCK.get(ResourceLocation.parse(material)).asItem();
-        MutableComponent mutableComponent = GriefLogger.themedLiteral(this.material.replace("minecraft:", ""));
+        MutableComponent mutableComponent = item != Items.AIR
+                ? Theme.toMinecraft(Theme.fromMinecraft(item.getDescription()).color(Theme.PRIMARY)).copy()
+                : GriefLogger.themedLiteral(this.material);
         if (item != Items.AIR) {
             return mutableComponent
                     .withStyle(mutableComponent

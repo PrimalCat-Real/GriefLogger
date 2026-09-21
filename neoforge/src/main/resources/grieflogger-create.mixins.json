@@ -7,10 +7,21 @@
   "client": [
   ],
   "mixins": [
+    "AbstractFunnelBlockMixin",
     "ArmBlockEntityMixin",
+    "BeltFunnelInteractionHandlerMixin",
     "BeltInventoryMixin",
     "ChuteBlockEntityMixin",
-    "DrillBlockEntityMixin"
+    "DeployerBlockMixin",
+    "DeployerBlockEntityMixin",
+    "DeployerItemHandlerMixin",
+    "DrillBlockEntityMixin",
+    "FunnelBlockMixin",
+    "FunnelBlockEntityMixin",
+    "ToolboxBlockEntityMixin",
+    "ToolboxDisposeAllPacketMixin",
+    "ToolboxInventoryMixin",
+    "ToolboxMenuMixin"
   ],
   "injectors": {
     "defaultRequire": 0

@@ -8,6 +8,7 @@ import com.daqem.grieflogger.database.service.*;
 import com.daqem.grieflogger.event.*;
 import com.daqem.grieflogger.event.block.BlockEvents;
 import com.daqem.grieflogger.event.item.ItemEvents;
+import com.daqem.grieflogger.util.TranslationFallbacks;
 import com.mojang.logging.LogUtils;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
@@ -179,19 +180,16 @@ public class GriefLogger {
     }
 
     public static MutableComponent translate(String str) {
-        MutableComponent component = translate(str, TranslatableContents.NO_ARGS);
-        if (GriefLoggerConfig.serverSideOnlyMode.get()) {
-            component = Component.literal(component.getString()).withStyle(component.getStyle());
-        }
-        return component;
+        return translate(str, TranslatableContents.NO_ARGS);
     }
 
     public static MutableComponent translate(String str, Object... args) {
-        MutableComponent component = Component.translatable(MOD_ID + "." + str, args);
+        String translationKey = MOD_ID + "." + str;
         if (GriefLoggerConfig.serverSideOnlyMode.get()) {
-            component = Component.literal(component.getString()).withStyle(component.getStyle());
+            String fallback = TranslationFallbacks.get(GriefLoggerConfig.serverLanguage.get(), translationKey);
+            return Component.translatableWithFallback(translationKey, fallback, args);
         }
-        return component;
+        return Component.translatable(translationKey, args);
     }
 
     public static MutableComponent literal(String str) {
@@ -199,35 +197,19 @@ public class GriefLogger {
     }
 
     public static MutableComponent themedTranslate(String str) {
-        MutableComponent component = themedTranslate(str, TranslatableContents.NO_ARGS);
-        if (GriefLoggerConfig.serverSideOnlyMode.get()) {
-            component = Component.literal(component.getString()).withStyle(component.getStyle());
-        }
-        return component;
+        return themedTranslate(str, TranslatableContents.NO_ARGS);
     }
 
     public static MutableComponent themedTranslate(String str, Object... args) {
-        MutableComponent component = Component.translatable(MOD_ID + "." + str, args).withStyle(getTheme());
-        if (GriefLoggerConfig.serverSideOnlyMode.get()) {
-            component = Component.literal(component.getString()).withStyle(component.getStyle());
-        }
-        return component;
+        return translate(str, args).withStyle(getTheme());
     }
 
     public static MutableComponent themedLiteral(String str) {
-        MutableComponent component = Component.literal(str).withStyle(getTheme());
-        if (GriefLoggerConfig.serverSideOnlyMode.get()) {
-            component = Component.literal(component.getString()).withStyle(component.getStyle());
-        }
-        return component;
+        return Component.literal(str).withStyle(getTheme());
     }
 
     public static Component getName() {
-        Component component = translate("name").withStyle(getTheme());
-        if (GriefLoggerConfig.serverSideOnlyMode.get()) {
-            component = Component.literal(component.getString()).withStyle(component.getStyle());
-        }
-        return component;
+        return translate("name").withStyle(getTheme());
     }
 
     public static UUID getEntityUUID(@Nullable Entity entity) {

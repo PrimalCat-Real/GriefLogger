@@ -138,6 +138,51 @@ public final class BlockEventCoalescer {
         }
     }
 
+    /**
+     * Records a block change whose mechanical source is already known. Unlike
+     * natural changes, explicit machine actions are not proximity-filtered.
+     */
+    public static synchronized void recordExplicitWithPhantom(
+            ServerLevel level,
+            BlockPos pos,
+            BlockState oldState,
+            BlockState newState,
+            BlockEventKind kind,
+            String phantomUser
+    ) {
+        BlockPos immutablePos = pos.immutable();
+        if (BlockEventLock.isLocked()) {
+            return;
+        }
+
+        long tick = level.getGameTime();
+        String key = makeKey(level.dimension(), immutablePos);
+        Aggregate aggregate = byKey.get(key);
+
+        if (aggregate == null || (tick - aggregate.tick) > MERGE_WINDOW_TICKS) {
+            aggregate = new Aggregate(tick, kind, immutablePos, GriefLogger.SYSTEM_UUID, phantomUser);
+            byKey.put(key, aggregate);
+            if (kind == BlockEventKind.SYSTEM_BREAK) {
+                captureBlockEntityData(level, immutablePos, aggregate);
+            }
+            aggregate.oldState = oldState;
+        } else {
+            if (kind.priority >= aggregate.kind.priority) {
+                aggregate.kind = kind;
+                aggregate.phantomUser = phantomUser;
+                aggregate.userUuid = GriefLogger.SYSTEM_UUID;
+            }
+            aggregate.tick = tick;
+        }
+
+        aggregate.newState = newState;
+
+        if (lastPurgeTick != tick) {
+            purgeAndEmitOlder(level, tick);
+            lastPurgeTick = tick;
+        }
+    }
+
     private static void captureBlockEntityData(ServerLevel level, BlockPos pos, Aggregate agg) {
         BlockEntity blockEntity = level.getBlockEntity(pos);
         if (blockEntity != null) {

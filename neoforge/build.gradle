@@ -57,6 +57,7 @@ dependencies {
 
     // Create mod - optional integration for mixin support
     compileOnly("com.simibubi.create:create-${rootProject.minecraft_version}:${rootProject.create_version}:slim") { transitive = false }
+    compileOnly("net.createmod.ponder:ponder-neoforge:${rootProject.ponder_version}+mc${rootProject.minecraft_version}") { transitive = false }
     compileOnly("dev.engine-room.flywheel:flywheel-neoforge-api-${rootProject.minecraft_version}:${rootProject.flywheel_version}")
     compileOnly("com.tterrag.registrate:Registrate:${rootProject.registrate_version}")
 }
